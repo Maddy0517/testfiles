@@ -115,6 +115,8 @@ Before setting up in Eclipse, ensure you have:
    ```
    --propertiesFile=config/my-local-pipeline.properties
    ```
+   
+   ⚠️ **IMPORTANT**: Make sure to include the `--` prefix for all arguments!
 
    **Arguments Tab** - VM arguments (optional):
    ```
@@ -172,7 +174,28 @@ For debugging:
 
 ## Common Eclipse Issues and Solutions
 
-### Issue 1: Maven Dependencies Not Downloaded
+### Issue 1: Command Line Argument Error
+
+**Error**: `java.lang.IllegalArgumentException: Argument 'propertiesFile=...' does not begin with '--'`
+
+**Solution**:
+1. In Eclipse, go to `Run` → `Run Configurations`
+2. Select your configuration
+3. Go to `Arguments` tab
+4. In `Program arguments`, make sure ALL arguments start with `--`:
+   ```
+   ✅ Correct:   --propertiesFile=config/pipeline-with-dates.properties
+   ❌ Wrong:     propertiesFile=config/pipeline-with-dates.properties
+   ```
+
+**Complete Example of Program Arguments**:
+```
+--propertiesFile=config/pipeline-with-dates.properties
+--effectiveFromDate=2024-01-01
+--effectiveToDate=2024-01-31
+```
+
+### Issue 2: Maven Dependencies Not Downloaded
 
 **Solution**:
 1. Right-click project → `Maven` → `Reload Projects`
