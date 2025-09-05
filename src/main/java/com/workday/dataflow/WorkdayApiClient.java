@@ -86,6 +86,9 @@ public class WorkdayApiClient implements Serializable {
                                          String apiVersion, Integer requestTimeout, Integer maxRetries, 
                                          Boolean enablePagination, Integer pageSize, String effectiveFromDate,
                                          String effectiveToDate, Boolean includeEffectiveFromDate, Boolean includeEffectiveToDate) {
+        // Add debug logging to help identify credential loading issues
+        LOG.info("Creating WorkdayApiClient with credentials - URL: {}, Username: {}, Password: {}", 
+                 soapApiUrl, username, (password != null ? "***PROVIDED***" : "NULL"));
         return new WorkdayApiClient(soapApiUrl, username, password, tenantName, apiVersion,
                                    requestTimeout, maxRetries, enablePagination, pageSize,
                                    effectiveFromDate, effectiveToDate, includeEffectiveFromDate, includeEffectiveToDate);

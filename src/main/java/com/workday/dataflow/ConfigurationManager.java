@@ -67,13 +67,19 @@ public class ConfigurationManager {
     public void applyToOptions(WorkdayToBigQueryOptions options) {
         // Workday SOAP API Configuration
         if (properties.containsKey("workday.soap.url")) {
-            options.setSoapApiUrl(properties.getProperty("workday.soap.url"));
+            String soapUrl = properties.getProperty("workday.soap.url");
+            options.setSoapApiUrl(soapUrl);
+            LOG.info("Loaded SOAP URL: {}", soapUrl);
         }
         if (properties.containsKey("workday.username")) {
-            options.setUsername(properties.getProperty("workday.username"));
+            String username = properties.getProperty("workday.username");
+            options.setUsername(username);
+            LOG.info("Loaded username: {}", username);
         }
         if (properties.containsKey("workday.password")) {
-            options.setPassword(properties.getProperty("workday.password"));
+            String password = properties.getProperty("workday.password");
+            options.setPassword(password);
+            LOG.info("Loaded password: {}", (password != null && !password.trim().isEmpty()) ? "***PROVIDED***" : "NULL/EMPTY");
         }
         if (properties.containsKey("workday.tenant")) {
             options.setTenantName(properties.getProperty("workday.tenant"));
