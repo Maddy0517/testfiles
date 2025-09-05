@@ -96,4 +96,51 @@ public class WorkdayToBigQueryPipelineTest {
 
         pipeline.run().waitUntilFinish();
     }
+
+    @Test
+    public void testDateFilterValidation() {
+        // Test that date filter validation works correctly
+        WorkdayToBigQueryOptions options = PipelineOptionsFactory.as(WorkdayToBigQueryOptions.class);
+        
+        // Set valid date filters
+        options.setEffectiveFromDate("2024-01-01");
+        options.setEffectiveToDate("2024-12-31");
+        options.setSoapApiUrl("https://test.workday.com");
+        options.setUsername("test@tenant");
+        options.setPassword("password");
+        
+        // This should not throw an exception
+        try {
+            WorkdayApiClient client = new WorkdayApiClient(options);
+            // If we get here, validation passed
+            assert true;
+        } catch (Exception e) {
+            // Should not reach here with valid dates
+            assert false : "Valid date filters should not throw exception: " + e.getMessage();
+        }
+    }
+
+    @Test
+    public void testInvalidDateFilterValidation() {
+        // Test that invalid date formats are rejected
+        WorkdayToBigQueryOptions options = PipelineOptionsFactory.as(WorkdayToBigQueryOptions.class);
+        
+        // Set invalid date format
+        options.setEffectiveFromDate("01-01-2024"); // Wrong format
+        options.setEffectiveToDate("2024-12-31");
+        options.setSoapApiUrl("https://test.workday.com");
+        options.setUsername("test@tenant");
+        options.setPassword("password");
+        
+        // This should throw an exception
+        try {
+            WorkdayApiClient client = new WorkdayApiClient(options);
+            assert false : "Invalid date format should throw exception";
+        } catch (IllegalArgumentException e) {
+            // Expected behavior
+            assert e.getMessage().contains("Invalid effective from date format");
+        } catch (Exception e) {
+            assert false : "Should throw IllegalArgumentException, not " + e.getClass().getSimpleName();
+        }
+    }
 }

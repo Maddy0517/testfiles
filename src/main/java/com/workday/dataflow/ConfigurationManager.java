@@ -89,6 +89,20 @@ public class ConfigurationManager {
             options.setPageSize(Integer.valueOf(properties.getProperty("api.page.size")));
         }
 
+        // Date Filter Configuration
+        if (properties.containsKey("workday.effective.from.date")) {
+            options.setEffectiveFromDate(properties.getProperty("workday.effective.from.date"));
+        }
+        if (properties.containsKey("workday.effective.to.date")) {
+            options.setEffectiveToDate(properties.getProperty("workday.effective.to.date"));
+        }
+        if (properties.containsKey("workday.include.effective.from.date")) {
+            options.setIncludeEffectiveFromDate(Boolean.valueOf(properties.getProperty("workday.include.effective.from.date")));
+        }
+        if (properties.containsKey("workday.include.effective.to.date")) {
+            options.setIncludeEffectiveToDate(Boolean.valueOf(properties.getProperty("workday.include.effective.to.date")));
+        }
+
         LOG.info("Applied configuration properties to pipeline options");
     }
 

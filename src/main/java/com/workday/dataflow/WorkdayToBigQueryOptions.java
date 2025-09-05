@@ -78,4 +78,20 @@ public interface WorkdayToBigQueryOptions extends PipelineOptions {
     @Description("Create disposition for BigQuery (CREATE_IF_NEEDED, CREATE_NEVER)")
     String getCreateDisposition();
     void setCreateDisposition(String createDisposition);
+
+    @Description("Effective from date for filtering worker data (format: YYYY-MM-DD)")
+    String getEffectiveFromDate();
+    void setEffectiveFromDate(String effectiveFromDate);
+
+    @Description("Effective to date for filtering worker data (format: YYYY-MM-DD)")
+    String getEffectiveToDate();
+    void setEffectiveToDate(String effectiveToDate);
+
+    @Description("Include workers with effective date on or after the from date")
+    Boolean getIncludeEffectiveFromDate();
+    void setIncludeEffectiveFromDate(Boolean includeEffectiveFromDate);
+
+    @Description("Include workers with effective date on or before the to date")
+    Boolean getIncludeEffectiveToDate();
+    void setIncludeEffectiveToDate(Boolean includeEffectiveToDate);
 }

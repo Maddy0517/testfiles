@@ -37,6 +37,10 @@ public class WorkdayApiClient implements Serializable {
     private final int maxRetries;
     private final boolean enablePagination;
     private final int pageSize;
+    private final String effectiveFromDate;
+    private final String effectiveToDate;
+    private final boolean includeEffectiveFromDate;
+    private final boolean includeEffectiveToDate;
     
     private transient CloseableHttpClient httpClient;
     private transient ObjectMapper objectMapper;
@@ -51,9 +55,16 @@ public class WorkdayApiClient implements Serializable {
         this.maxRetries = options.getMaxRetries() != null ? options.getMaxRetries() : 3;
         this.enablePagination = options.getEnablePagination() != null ? options.getEnablePagination() : true;
         this.pageSize = options.getPageSize() != null ? options.getPageSize() : 100;
+        this.effectiveFromDate = options.getEffectiveFromDate();
+        this.effectiveToDate = options.getEffectiveToDate();
+        this.includeEffectiveFromDate = options.getIncludeEffectiveFromDate() != null ? options.getIncludeEffectiveFromDate() : true;
+        this.includeEffectiveToDate = options.getIncludeEffectiveToDate() != null ? options.getIncludeEffectiveToDate() : true;
         
         initializeHttpClient();
         this.objectMapper = new ObjectMapper();
+        
+        // Validate date formats if provided
+        validateDateFormats();
     }
 
     private void initializeHttpClient() {
@@ -73,6 +84,58 @@ public class WorkdayApiClient implements Serializable {
             .setDefaultCredentialsProvider(credentialsProvider)
             .setDefaultRequestConfig(requestConfig)
             .build();
+    }
+
+    /**
+     * Validate date formats for effective date filters
+     */
+    private void validateDateFormats() {
+        if (effectiveFromDate != null && !effectiveFromDate.trim().isEmpty()) {
+            if (!isValidDateFormat(effectiveFromDate)) {
+                throw new IllegalArgumentException("Invalid effective from date format: " + effectiveFromDate + 
+                    ". Expected format: YYYY-MM-DD");
+            }
+            LOG.info("Using effective from date filter: {}", effectiveFromDate);
+        }
+        
+        if (effectiveToDate != null && !effectiveToDate.trim().isEmpty()) {
+            if (!isValidDateFormat(effectiveToDate)) {
+                throw new IllegalArgumentException("Invalid effective to date format: " + effectiveToDate + 
+                    ". Expected format: YYYY-MM-DD");
+            }
+            LOG.info("Using effective to date filter: {}", effectiveToDate);
+        }
+        
+        // Validate that from date is not after to date
+        if (effectiveFromDate != null && !effectiveFromDate.trim().isEmpty() &&
+            effectiveToDate != null && !effectiveToDate.trim().isEmpty()) {
+            if (effectiveFromDate.compareTo(effectiveToDate) > 0) {
+                throw new IllegalArgumentException("Effective from date (" + effectiveFromDate + 
+                    ") cannot be after effective to date (" + effectiveToDate + ")");
+            }
+        }
+    }
+
+    /**
+     * Validate if the date string is in YYYY-MM-DD format
+     */
+    private boolean isValidDateFormat(String dateString) {
+        if (dateString == null || dateString.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Check if it matches YYYY-MM-DD pattern
+            if (!dateString.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                return false;
+            }
+            
+            // Try to parse the date to ensure it's valid
+            java.time.LocalDate.parse(dateString);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -110,43 +173,81 @@ public class WorkdayApiClient implements Serializable {
     }
 
     /**
-     * Build SOAP request for getting workers
+     * Build SOAP request for getting workers with date filters
      */
     private String buildGetWorkersRequest(int page) {
         int offset = (page - 1) * pageSize;
         
-        return String.format(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" \n" +
-            "               xmlns:wd=\"urn:com.workday/bsvc\">\n" +
-            "  <soap:Header>\n" +
-            "    <wd:Workday_Common_Header>\n" +
-            "      <wd:Include_Reference_Descriptors_In_Response>true</wd:Include_Reference_Descriptors_In_Response>\n" +
-            "    </wd:Workday_Common_Header>\n" +
-            "  </soap:Header>\n" +
-            "  <soap:Body>\n" +
-            "    <wd:Get_Workers_Request version=\"%s\">\n" +
-            "      <wd:Request_Criteria>\n" +
-            "        <wd:Exclude_Inactive_Workers>true</wd:Exclude_Inactive_Workers>\n" +
-            "        <wd:Exclude_Contingent_Workers>false</wd:Exclude_Contingent_Workers>\n" +
-            "      </wd:Request_Criteria>\n" +
-            "      <wd:Response_Filter>\n" +
-            "        <wd:Page>%d</wd:Page>\n" +
-            "        <wd:Count>%d</wd:Count>\n" +
-            "      </wd:Response_Filter>\n" +
-            "      <wd:Response_Group>\n" +
-            "        <wd:Include_Reference>true</wd:Include_Reference>\n" +
-            "        <wd:Include_Personal_Information>true</wd:Include_Personal_Information>\n" +
-            "        <wd:Include_Employment_Information>true</wd:Include_Employment_Information>\n" +
-            "        <wd:Include_Compensation>true</wd:Include_Compensation>\n" +
-            "        <wd:Include_Organizations>true</wd:Include_Organizations>\n" +
-            "        <wd:Include_Roles>true</wd:Include_Roles>\n" +
-            "      </wd:Response_Group>\n" +
-            "    </wd:Get_Workers_Request>\n" +
-            "  </soap:Body>\n" +
-            "</soap:Envelope>",
-            apiVersion, page, pageSize
-        );
+        StringBuilder requestBuilder = new StringBuilder();
+        requestBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+            .append("<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" \n")
+            .append("               xmlns:wd=\"urn:com.workday/bsvc\">\n")
+            .append("  <soap:Header>\n")
+            .append("    <wd:Workday_Common_Header>\n")
+            .append("      <wd:Include_Reference_Descriptors_In_Response>true</wd:Include_Reference_Descriptors_In_Response>\n")
+            .append("    </wd:Workday_Common_Header>\n")
+            .append("  </soap:Header>\n")
+            .append("  <soap:Body>\n")
+            .append("    <wd:Get_Workers_Request version=\"").append(apiVersion).append("\">\n")
+            .append("      <wd:Request_Criteria>\n")
+            .append("        <wd:Exclude_Inactive_Workers>true</wd:Exclude_Inactive_Workers>\n")
+            .append("        <wd:Exclude_Contingent_Workers>false</wd:Exclude_Contingent_Workers>\n");
+        
+        // Add date filters if provided
+        if (effectiveFromDate != null && !effectiveFromDate.trim().isEmpty()) {
+            requestBuilder.append("        <wd:Transaction_Log_Criteria_Data>\n")
+                .append("          <wd:Transaction_Date_Range_Data>\n")
+                .append("            <wd:Updated_From>").append(effectiveFromDate).append("</wd:Updated_From>\n");
+            
+            if (effectiveToDate != null && !effectiveToDate.trim().isEmpty()) {
+                requestBuilder.append("            <wd:Updated_Through>").append(effectiveToDate).append("</wd:Updated_Through>\n");
+            }
+            
+            requestBuilder.append("          </wd:Transaction_Date_Range_Data>\n")
+                .append("        </wd:Transaction_Log_Criteria_Data>\n");
+        } else if (effectiveToDate != null && !effectiveToDate.trim().isEmpty()) {
+            requestBuilder.append("        <wd:Transaction_Log_Criteria_Data>\n")
+                .append("          <wd:Transaction_Date_Range_Data>\n")
+                .append("            <wd:Updated_Through>").append(effectiveToDate).append("</wd:Updated_Through>\n")
+                .append("          </wd:Transaction_Date_Range_Data>\n")
+                .append("        </wd:Transaction_Log_Criteria_Data>\n");
+        }
+        
+        // Alternative approach using As_Of_Effective_Date for point-in-time data
+        if (effectiveFromDate != null && !effectiveFromDate.trim().isEmpty() && 
+            effectiveToDate != null && !effectiveToDate.trim().isEmpty() && 
+            effectiveFromDate.equals(effectiveToDate)) {
+            // Point-in-time query
+            requestBuilder.append("        <wd:As_Of_Effective_Date>").append(effectiveFromDate).append("</wd:As_Of_Effective_Date>\n");
+        }
+        
+        requestBuilder.append("      </wd:Request_Criteria>\n")
+            .append("      <wd:Response_Filter>\n")
+            .append("        <wd:Page>").append(page).append("</wd:Page>\n")
+            .append("        <wd:Count>").append(pageSize).append("</wd:Count>\n");
+        
+        // Add As_Of_Entry_DateTime for effective date filtering if specified
+        if (effectiveFromDate != null && !effectiveFromDate.trim().isEmpty() && 
+            !effectiveFromDate.equals(effectiveToDate)) {
+            requestBuilder.append("        <wd:As_Of_Entry_DateTime>").append(effectiveFromDate).append("T00:00:00</wd:As_Of_Entry_DateTime>\n");
+        }
+        
+        requestBuilder.append("      </wd:Response_Filter>\n")
+            .append("      <wd:Response_Group>\n")
+            .append("        <wd:Include_Reference>true</wd:Include_Reference>\n")
+            .append("        <wd:Include_Personal_Information>true</wd:Include_Personal_Information>\n")
+            .append("        <wd:Include_Employment_Information>true</wd:Include_Employment_Information>\n")
+            .append("        <wd:Include_Compensation>true</wd:Include_Compensation>\n")
+            .append("        <wd:Include_Organizations>true</wd:Include_Organizations>\n")
+            .append("        <wd:Include_Roles>true</wd:Include_Roles>\n")
+            .append("      </wd:Response_Group>\n")
+            .append("    </wd:Get_Workers_Request>\n")
+            .append("  </soap:Body>\n")
+            .append("</soap:Envelope>");
+        
+        String soapRequest = requestBuilder.toString();
+        LOG.debug("Built SOAP request with date filters - From: {}, To: {}", effectiveFromDate, effectiveToDate);
+        return soapRequest;
     }
 
     /**

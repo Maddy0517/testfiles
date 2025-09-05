@@ -29,6 +29,7 @@ This pipeline performs the following operations:
 ### Key Features
 
 - ✅ SOAP API authentication and pagination
+- ✅ **Effective date filtering** for incremental data extraction
 - ✅ Configurable batch processing
 - ✅ Retry logic for failed API calls
 - ✅ Data validation and cleansing
@@ -139,6 +140,12 @@ api.max.retries=3
 api.request.timeout=30000
 api.enable.pagination=true
 api.page.size=100
+
+# Date Filter Configuration
+workday.effective.from.date=2024-01-01
+workday.effective.to.date=2024-12-31
+workday.include.effective.from.date=true
+workday.include.effective.to.date=true
 ```
 
 #### Local Development Configuration (`config/pipeline-local.properties`)
@@ -157,6 +164,67 @@ export BIGQUERY_PROJECT="your-gcp-project-id"
 export BIGQUERY_DATASET="workday_data"
 export BIGQUERY_TABLE="workers"
 ```
+
+## Date Filtering
+
+The pipeline supports filtering worker data by effective dates, which is crucial for incremental data loading and processing only changed records.
+
+### Date Filter Configuration
+
+Configure date filters in your properties file:
+
+```properties
+# Date Filter Configuration
+workday.effective.from.date=2024-01-01    # Start date (YYYY-MM-DD format)
+workday.effective.to.date=2024-12-31      # End date (YYYY-MM-DD format)
+workday.include.effective.from.date=true  # Include records from start date
+workday.include.effective.to.date=true    # Include records up to end date
+```
+
+### Date Filter Options
+
+1. **Date Range Filtering**:
+   ```properties
+   workday.effective.from.date=2024-01-01
+   workday.effective.to.date=2024-12-31
+   ```
+   Gets workers with effective dates between January 1, 2024, and December 31, 2024.
+
+2. **From Date Only**:
+   ```properties
+   workday.effective.from.date=2024-01-01
+   workday.effective.to.date=
+   ```
+   Gets workers with effective dates from January 1, 2024, onwards.
+
+3. **To Date Only**:
+   ```properties
+   workday.effective.from.date=
+   workday.effective.to.date=2024-12-31
+   ```
+   Gets workers with effective dates up to December 31, 2024.
+
+4. **No Date Filtering** (default):
+   ```properties
+   workday.effective.from.date=
+   workday.effective.to.date=
+   ```
+   Gets all workers regardless of effective date.
+
+### Use Cases
+
+- **Initial Load**: Leave date filters empty to get all historical data
+- **Incremental Load**: Set `effective.from.date` to last successful run date
+- **Historical Analysis**: Set specific date ranges for historical data analysis
+- **Daily Updates**: Set date range to yesterday or last few days
+
+### SOAP API Implementation
+
+The pipeline implements date filtering using Workday's SOAP API features:
+
+- **Transaction_Log_Criteria_Data**: For filtering by update/modification dates
+- **As_Of_Effective_Date**: For point-in-time data queries
+- **As_Of_Entry_DateTime**: For effective date filtering in response filters
 
 ## Local Development Setup
 
@@ -214,6 +282,18 @@ bq mk --dataset your-gcp-project:workday_data_dev
 mvn compile exec:java \
   -Dexec.mainClass=com.workday.dataflow.WorkdayToBigQueryPipeline \
   -Dexec.args="--propertiesFile=config/my-pipeline.properties"
+```
+
+#### Running with Date Filters
+
+You can also pass date filters directly as command line arguments:
+
+```bash
+mvn compile exec:java \
+  -Dexec.mainClass=com.workday.dataflow.WorkdayToBigQueryPipeline \
+  -Dexec.args="--propertiesFile=config/my-pipeline.properties \
+               --effectiveFromDate=2024-01-01 \
+               --effectiveToDate=2024-12-31"
 ```
 
 #### Using the Convenience Script
@@ -359,6 +439,22 @@ The pipeline uses SLF4J for logging. Key log points include:
 - Check network connectivity to Workday
 - Implement exponential backoff (already included)
 
+#### 5. Date Filter Errors
+
+**Error**: `Invalid effective from date format`
+
+**Solution**:
+- Ensure date format is YYYY-MM-DD (e.g., 2024-01-01)
+- Verify that from date is not after to date
+- Check for typos in property names
+
+**Error**: `No data returned with date filters`
+
+**Solution**:
+- Verify the date range contains actual data changes
+- Check if the effective dates align with Workday's data model
+- Try expanding the date range for testing
+
 ### Monitoring Queries
 
 Use these BigQuery queries to monitor data quality:
@@ -385,6 +481,25 @@ SELECT
 FROM `your-project.workday_data.workers`
 GROUP BY employee_id
 HAVING COUNT(*) > 1;
+
+-- Monitor date range coverage
+SELECT 
+  MIN(hire_date) as earliest_hire_date,
+  MAX(hire_date) as latest_hire_date,
+  MIN(processed_timestamp) as first_processed,
+  MAX(processed_timestamp) as last_processed,
+  COUNT(DISTINCT DATE(processed_timestamp)) as processing_days
+FROM `your-project.workday_data.workers`;
+
+-- Check for data in specific date ranges
+SELECT 
+  DATE(processed_timestamp) as processing_date,
+  COUNT(*) as records_processed,
+  COUNT(DISTINCT employee_id) as unique_employees
+FROM `your-project.workday_data.workers`
+WHERE DATE(processed_timestamp) >= '2024-01-01'
+GROUP BY DATE(processed_timestamp)
+ORDER BY processing_date DESC;
 ```
 
 ## Data Schema
@@ -454,8 +569,11 @@ diskSizeGb=100              # Worker disk size
 - **Local Development**: Use small batch sizes (10-50)
 - **Production**: Use larger batch sizes (500-1000)
 - **Large Datasets**: Use Dataflow with multiple workers
-- **Frequent Updates**: Use `WRITE_APPEND` mode
-- **Full Refresh**: Use `WRITE_TRUNCATE` mode
+- **Frequent Updates**: Use `WRITE_APPEND` mode with date filters
+- **Full Refresh**: Use `WRITE_TRUNCATE` mode without date filters
+- **Incremental Loading**: Use date filters to process only changed data
+- **Daily Runs**: Set effective date range to previous day
+- **Catch-up Processing**: Use wider date ranges with smaller batch sizes
 
 ## Contributing
 
