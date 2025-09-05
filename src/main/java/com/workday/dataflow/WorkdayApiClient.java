@@ -46,19 +46,30 @@ public class WorkdayApiClient implements Serializable {
     private transient ObjectMapper objectMapper;
 
     public WorkdayApiClient(WorkdayToBigQueryOptions options) {
-        this.soapApiUrl = options.getSoapApiUrl();
-        this.username = options.getUsername();
-        this.password = options.getPassword();
-        this.tenantName = options.getTenantName();
-        this.apiVersion = options.getApiVersion() != null ? options.getApiVersion() : "v40.0";
-        this.requestTimeout = options.getRequestTimeout() != null ? options.getRequestTimeout() : 30000;
-        this.maxRetries = options.getMaxRetries() != null ? options.getMaxRetries() : 3;
-        this.enablePagination = options.getEnablePagination() != null ? options.getEnablePagination() : true;
-        this.pageSize = options.getPageSize() != null ? options.getPageSize() : 100;
-        this.effectiveFromDate = options.getEffectiveFromDate();
-        this.effectiveToDate = options.getEffectiveToDate();
-        this.includeEffectiveFromDate = options.getIncludeEffectiveFromDate() != null ? options.getIncludeEffectiveFromDate() : true;
-        this.includeEffectiveToDate = options.getIncludeEffectiveToDate() != null ? options.getIncludeEffectiveToDate() : true;
+        this(options.getSoapApiUrl(), options.getUsername(), options.getPassword(), 
+             options.getTenantName(), options.getApiVersion(), options.getRequestTimeout(),
+             options.getMaxRetries(), options.getEnablePagination(), options.getPageSize(),
+             options.getEffectiveFromDate(), options.getEffectiveToDate(),
+             options.getIncludeEffectiveFromDate(), options.getIncludeEffectiveToDate());
+    }
+    
+    public WorkdayApiClient(String soapApiUrl, String username, String password, String tenantName,
+                           String apiVersion, Integer requestTimeout, Integer maxRetries, 
+                           Boolean enablePagination, Integer pageSize, String effectiveFromDate,
+                           String effectiveToDate, Boolean includeEffectiveFromDate, Boolean includeEffectiveToDate) {
+        this.soapApiUrl = soapApiUrl;
+        this.username = username;
+        this.password = password;
+        this.tenantName = tenantName;
+        this.apiVersion = apiVersion != null ? apiVersion : "v40.0";
+        this.requestTimeout = requestTimeout != null ? requestTimeout : 30000;
+        this.maxRetries = maxRetries != null ? maxRetries : 3;
+        this.enablePagination = enablePagination != null ? enablePagination : true;
+        this.pageSize = pageSize != null ? pageSize : 100;
+        this.effectiveFromDate = effectiveFromDate;
+        this.effectiveToDate = effectiveToDate;
+        this.includeEffectiveFromDate = includeEffectiveFromDate != null ? includeEffectiveFromDate : true;
+        this.includeEffectiveToDate = includeEffectiveToDate != null ? includeEffectiveToDate : true;
         
         initializeHttpClient();
         this.objectMapper = new ObjectMapper();

@@ -224,7 +224,19 @@ Change your program arguments to use absolute path:
 ```
 3. Update the ConfigurationManager to load from classpath
 
-### Issue 3: Maven Dependencies Not Downloaded
+### Issue 3: Serialization Error
+
+**Error**: `java.lang.IllegalArgumentException: unable to serialize DoFnWithExecutionInformation` or `java.io.NotSerializableException: PipelineOptions objects are not serializable`
+
+**Solution**:
+This is a common Apache Beam issue when PipelineOptions objects are captured in DoFn classes. The code has been fixed to extract individual serializable values instead of storing the entire options object.
+
+**If you still see this error**:
+1. Make sure you're using the latest version of the code
+2. Clean and rebuild the project: `Project` → `Clean`
+3. Refresh the project: Right-click → `Refresh`
+
+### Issue 4: Maven Dependencies Not Downloaded
 
 **Solution**:
 1. Right-click project → `Maven` → `Reload Projects`

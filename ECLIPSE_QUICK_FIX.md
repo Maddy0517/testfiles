@@ -102,9 +102,21 @@ INFO  - Starting Workday to BigQuery pipeline
 
 ## If You Still Get Errors:
 
+### Properties File Errors:
 1. **Check Project Structure**: Make sure `src/main/resources/eclipse-local.properties` exists
 2. **Refresh Project**: Right-click project → Refresh
 3. **Clean Build**: Project → Clean → Select your project
 4. **Check Maven**: Right-click project → Maven → Reload Projects
+
+### Serialization Errors:
+If you see `NotSerializableException` or `unable to serialize DoFnWithExecutionInformation`:
+1. **Clean and Rebuild**: Project → Clean → Select project → Clean
+2. **Refresh Project**: Right-click project → Refresh  
+3. **Restart Eclipse**: Sometimes a restart helps with serialization issues
+
+### Authentication Errors:
+1. **Check Service Account**: Verify `GOOGLE_APPLICATION_CREDENTIALS` path
+2. **Test gcloud**: Run `gcloud auth application-default login`
+3. **Verify Permissions**: Ensure service account has BigQuery access
 
 The easiest solution is **Solution 3** - just use the properties file in `src/main/resources/` and update your credentials there!
