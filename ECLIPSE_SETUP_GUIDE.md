@@ -195,7 +195,36 @@ For debugging:
 --effectiveToDate=2024-01-31
 ```
 
-### Issue 2: Maven Dependencies Not Downloaded
+### Issue 2: Properties File Not Found
+
+**Error**: `java.io.FileNotFoundException: config\pipeline-with-dates.properties (The system cannot find the path specified)`
+
+**Solution**:
+This happens because Eclipse's working directory is not set to the project root. Here are 3 ways to fix it:
+
+**Option A: Set Working Directory (Recommended)**
+1. Go to `Run` → `Run Configurations`
+2. Select your configuration
+3. Go to `Arguments` tab
+4. In the `Working directory` section, select `Other`
+5. Click `Workspace...` and select your project root folder
+6. Click `Apply`
+
+**Option B: Use Absolute Path**
+Change your program arguments to use absolute path:
+```
+--propertiesFile=${workspace_loc:workday-bigquery-pipeline}/config/pipeline-with-dates.properties
+```
+
+**Option C: Use Classpath Resource**
+1. Move the properties file to `src/main/resources/`
+2. Update the program arguments:
+```
+--propertiesFile=pipeline-with-dates.properties
+```
+3. Update the ConfigurationManager to load from classpath
+
+### Issue 3: Maven Dependencies Not Downloaded
 
 **Solution**:
 1. Right-click project → `Maven` → `Reload Projects`

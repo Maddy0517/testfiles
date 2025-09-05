@@ -22,12 +22,42 @@ public class ConfigurationManager {
     }
 
     private void loadProperties(String propertiesFilePath) throws IOException {
-        try (InputStream input = new FileInputStream(propertiesFilePath)) {
+        InputStream input = null;
+        try {
+            // Try to load from file system first
+            try {
+                input = new FileInputStream(propertiesFilePath);
+                LOG.info("Loading properties from file system: {}", propertiesFilePath);
+            } catch (IOException e) {
+                // If file system fails, try to load from classpath
+                input = this.getClass().getClassLoader().getResourceAsStream(propertiesFilePath);
+                if (input != null) {
+                    LOG.info("Loading properties from classpath: {}", propertiesFilePath);
+                } else {
+                    // Try without leading path separators
+                    String fileName = propertiesFilePath.replaceAll("^[/\\\\]+", "");
+                    input = this.getClass().getClassLoader().getResourceAsStream(fileName);
+                    if (input != null) {
+                        LOG.info("Loading properties from classpath: {}", fileName);
+                    } else {
+                        LOG.error("Properties file not found in file system or classpath: {}", propertiesFilePath);
+                        throw new IOException("Properties file not found: " + propertiesFilePath + 
+                            ". Please check the file path or place the file in src/main/resources/");
+                    }
+                }
+            }
+            
             properties.load(input);
             LOG.info("Successfully loaded properties from: {}", propertiesFilePath);
-        } catch (IOException e) {
-            LOG.error("Failed to load properties from: {}", propertiesFilePath, e);
-            throw e;
+            
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (IOException e) {
+                    LOG.warn("Failed to close input stream", e);
+                }
+            }
         }
     }
 
