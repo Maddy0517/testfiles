@@ -10,6 +10,10 @@ import org.apache.beam.sdk.options.ValueProvider;
  */
 public interface WorkdayPipelineOptions extends PipelineOptions {
     
+    @Description("Path to properties file containing all configuration")
+    ValueProvider<String> getPropertiesFile();
+    void setPropertiesFile(ValueProvider<String> propertiesFile);
+    
     @Description("Workday endpoint URL")
     ValueProvider<String> getWorkdayEndpoint();
     void setWorkdayEndpoint(ValueProvider<String> workdayEndpoint);

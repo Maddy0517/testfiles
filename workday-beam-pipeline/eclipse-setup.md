@@ -26,79 +26,195 @@
    - Right-click project → `Maven` → `Update Project`
    - Check "Force Update of Snapshots/Releases"
 
-### 4. Run Configurations
+## 🔧 Run Configurations with Properties Files
 
-#### Local Development Run Configuration
+### 4. Properties File Approach (RECOMMENDED)
+
+All configuration is now managed through properties files. This approach is cleaner and easier to maintain.
+
+#### 4.1. Local Development Run Configuration
 1. Right-click project → `Run As` → `Run Configurations`
 2. Create new `Java Application` configuration
 3. Set:
-   - **Name**: `Workday Pipeline Local`
+   - **Name**: `Workday Pipeline - Local Dev`
    - **Project**: `workday-beam-pipeline`
    - **Main class**: `com.example.workday.WorkdayToBigQueryPipeline`
-   - **Arguments**: Add program arguments (see example below)
 
-#### Example Program Arguments for Local Run:
-```
---runner=DirectRunner
---workdayEndpoint=https://wd2-impl-services1.workday.com
---workdayUsername=your_username
---workdayPassword=your_password
---workdayTenant=your_tenant
---serviceName=Human_Resources
---operationName=Get_Workers
---bigQueryProject=your-project-id
---bigQueryDataset=workday_data
---bigQueryTable=workers
---transformationType=worker
---pageSize=50
-```
+4. **Arguments Tab**:
+   - **Program arguments**: 
+     ```
+     --propertiesFile=C:/path/to/workday-beam-pipeline/config/local-dev.properties
+     ```
+   - **VM arguments**:
+     ```
+     -DGOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
+     -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
+     -Xmx2g
+     -Xms512m
+     ```
 
-#### Dataflow Run Configuration
+#### 4.2. Dataflow Production Run Configuration
 1. Create another `Java Application` configuration
 2. Set:
-   - **Name**: `Workday Pipeline Dataflow`
+   - **Name**: `Workday Pipeline - Dataflow Prod`
+   - **Project**: `workday-beam-pipeline`
    - **Main class**: `com.example.workday.WorkdayToBigQueryPipeline`
-   - **Arguments**: Add Dataflow-specific arguments
 
-#### Example Program Arguments for Dataflow:
+3. **Arguments Tab**:
+   - **Program arguments**: 
+     ```
+     --propertiesFile=C:/path/to/workday-beam-pipeline/config/dataflow-prod.properties
+     ```
+   - **VM arguments**:
+     ```
+     -DGOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
+     -Xmx4g
+     -Xms1g
+     ```
+
+#### 4.3. Organizations Data Run Configuration
+1. Create another `Java Application` configuration
+2. Set:
+   - **Name**: `Workday Pipeline - Organizations`
+   - **Project**: `workday-beam-pipeline`
+   - **Main class**: `com.example.workday.WorkdayToBigQueryPipeline`
+
+3. **Arguments Tab**:
+   - **Program arguments**: 
+     ```
+     --propertiesFile=C:/path/to/workday-beam-pipeline/config/organizations.properties
+     ```
+   - **VM arguments**:
+     ```
+     -DGOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
+     -Dorg.slf4j.simpleLogger.defaultLogLevel=INFO
+     -Xmx2g
+     -Xms512m
+     ```
+
+## 📁 Available Properties Files
+
+The project includes several pre-configured properties files:
+
+### 1. **`config/local-dev.properties`**
+- DirectRunner (local execution)
+- Small page sizes for development
+- Debug logging enabled
+- Truncate mode for clean testing
+
+### 2. **`config/dataflow-prod.properties`**
+- DataflowRunner (Google Cloud)
+- Production-optimized settings
+- Large page sizes and worker counts
+- Append mode for production data
+
+### 3. **`config/organizations.properties`**
+- Configured for organization data extraction
+- Uses organization transformation
+- Separate BigQuery table
+
+### 4. **`config/generic-data.properties`**
+- Template for any Workday service
+- Generic transformation preserves all data
+- Easy to customize for different services
+
+## 🔧 Customizing Properties Files
+
+### 1. **Edit Properties Files**
+Before running, customize the properties files with your actual values:
+
+```properties
+# Update these values in your chosen properties file
+workdayEndpoint=https://your-tenant.workday.com
+workdayUsername=your_actual_username
+workdayPassword=your_actual_password
+workdayTenant=your_tenant_name
+bigQueryProject=your-gcp-project-id
 ```
---runner=DataflowRunner
---project=your-gcp-project
---region=us-central1
---jobName=workday-to-bigquery-job
---stagingLocation=gs://your-bucket/staging
---tempLocation=gs://your-bucket/temp
---workdayEndpoint=https://wd2-impl-services1.workday.com
---workdayUsername=your_username
---workdayPassword=your_password
---workdayTenant=your_tenant
---serviceName=Human_Resources
---operationName=Get_Workers
---bigQueryProject=your-project-id
---bigQueryDataset=workday_data
---bigQueryTable=workers
---transformationType=worker
+
+### 2. **Override Individual Properties**
+You can override specific properties from command line:
+
+**Program arguments**:
+```
+--propertiesFile=C:/path/to/config/local-dev.properties
+--pageSize=25
+--bigQueryTable=workers_test
 ```
 
-### 5. Environment Variables (Optional)
-For security, you can set sensitive information as environment variables:
+Command line arguments take precedence over properties file values.
 
-1. In Run Configuration → `Environment` tab
-2. Add variables:
-   - `WORKDAY_USERNAME`
-   - `WORKDAY_PASSWORD`
-   - `GOOGLE_APPLICATION_CREDENTIALS` (path to service account key)
+## 🔧 VM Arguments Reference
 
-Then modify arguments to use `${WORKDAY_USERNAME}` instead of hardcoded values.
+### Common VM Arguments:
+```
+# Google Cloud Authentication
+-DGOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
 
-### 6. Debug Configuration
-1. Create a `Debug Configuration` similar to Run Configuration
-2. Set breakpoints in your code
-3. Use `Debug As` → `Java Application`
+# Logging Level
+-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
 
-### 7. Testing
+# Memory Settings
+-Xmx4g
+-Xms1g
+
+# System Properties
+-Dfile.encoding=UTF-8
+-Duser.timezone=UTC
+```
+
+## 🔧 Environment Variables (Alternative)
+
+For enhanced security, you can use environment variables:
+
+### 1. **Set Environment Variables**
+In Eclipse Run Configuration → `Environment` tab:
+```
+WORKDAY_USERNAME=your_username
+WORKDAY_PASSWORD=your_password
+GOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
+```
+
+### 2. **Update Properties Files**
+Use environment variable placeholders:
+```properties
+workdayUsername=${WORKDAY_USERNAME}
+workdayPassword=${WORKDAY_PASSWORD}
+```
+
+## 🔧 Debug Configuration
+
+### 1. **Create Debug Configuration**
+1. Right-click project → `Debug As` → `Debug Configurations`
+2. Create new `Java Application` configuration
+3. Use same settings as Run Configuration
+4. Set breakpoints in your code
+
+### 2. **Debug with Properties**
+**Program arguments**:
+```
+--propertiesFile=C:/path/to/config/local-dev.properties
+```
+
+**VM arguments**:
+```
+-DGOOGLE_APPLICATION_CREDENTIALS=C:/path/to/service-account-key.json
+-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG
+-Xmx2g
+```
+
+## 🧪 Testing Configuration
+
+### 1. **Run Unit Tests**
 1. Right-click on `src/test/java` → `Run As` → `JUnit Test`
 2. Or run specific test classes
+
+### 2. **Test with Different Properties**
+Create test-specific properties files:
+```
+config/test.properties
+config/integration-test.properties
+```
 
 ## Troubleshooting
 

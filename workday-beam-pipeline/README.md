@@ -64,21 +64,30 @@ cd workday-beam-pipeline
 mvn clean compile
 ```
 
-### 2. Configure Credentials
+### 2. Configure with Properties Files (RECOMMENDED)
 
-Update `src/main/resources/application.properties` with your settings:
+The pipeline now uses properties files for all configuration. Choose your configuration approach:
 
+**Option A: Use Pre-configured Properties Files**
+1. Edit `config/local-dev.properties` with your settings:
 ```properties
-# Workday Configuration
-workday.endpoint=https://wd2-impl-services1.workday.com
-workday.tenant=your_tenant_name
-workday.username=your_username
-workday.password=your_password
+workdayEndpoint=https://your-tenant.workday.com
+workdayUsername=your_username
+workdayPassword=your_password
+workdayTenant=your_tenant_name
+bigQueryProject=your-gcp-project-id
+```
 
-# BigQuery Configuration
-bigquery.project=your-gcp-project-id
-bigquery.dataset=workday_data
-bigquery.table=workday_records
+**Option B: Use Environment Variables (More Secure)**
+1. Set environment variables:
+```bash
+export WORKDAY_USERNAME=your_username
+export WORKDAY_PASSWORD=your_password
+```
+2. Update properties file to use variables:
+```properties
+workdayUsername=${WORKDAY_USERNAME}
+workdayPassword=${WORKDAY_PASSWORD}
 ```
 
 ### 3. Set up Google Cloud Authentication
@@ -91,25 +100,22 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
 gcloud auth application-default login
 ```
 
-### 4. Run Locally
+### 4. Run with Properties File
 
+**Eclipse IDE:**
+- Program Arguments: `--propertiesFile=/path/to/config/local-dev.properties`
+- VM Arguments: `-DGOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json`
+
+**Command Line:**
 ```bash
-# Using the provided script
-./scripts/run-local.sh
-
-# Or using Maven directly
 mvn exec:java -Dexec.mainClass=com.example.workday.WorkdayToBigQueryPipeline \
-  -Dexec.args="--runner=DirectRunner \
-    --workdayEndpoint=https://wd2-impl-services1.workday.com \
-    --workdayUsername=your_username \
-    --workdayPassword=your_password \
-    --workdayTenant=your_tenant \
-    --serviceName=Human_Resources \
-    --operationName=Get_Workers \
-    --bigQueryProject=your-project-id \
-    --bigQueryDataset=workday_data \
-    --bigQueryTable=workers \
-    --transformationType=worker"
+  -Dexec.args="--propertiesFile=/path/to/config/local-dev.properties"
+```
+
+**Using Scripts:**
+```bash
+# Update script with your properties file path
+./scripts/run-with-properties.sh
 ```
 
 ## Configuration Options

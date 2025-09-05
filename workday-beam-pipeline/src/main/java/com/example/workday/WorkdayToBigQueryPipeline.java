@@ -21,19 +21,115 @@ public class WorkdayToBigQueryPipeline {
     private static final Logger LOG = LoggerFactory.getLogger(WorkdayToBigQueryPipeline.class);
     
     public static void main(String[] args) {
-        // Parse pipeline options
-        WorkdayPipelineOptions options = PipelineOptionsFactory.fromArgs(args)
-                .withValidation()
-                .as(WorkdayPipelineOptions.class);
+        try {
+            // Parse initial options to get properties file path
+            WorkdayPipelineOptions initialOptions = PipelineOptionsFactory.fromArgs(args)
+                    .withValidation()
+                    .as(WorkdayPipelineOptions.class);
+            
+            // Check if properties file is specified
+            WorkdayPipelineOptions options;
+            if (initialOptions.getPropertiesFile() != null && initialOptions.getPropertiesFile().isAccessible()) {
+                String propertiesFilePath = initialOptions.getPropertiesFile().get();
+                LOG.info("Loading configuration from properties file: {}", propertiesFilePath);
+                
+                // Load properties and merge with command line args
+                options = loadOptionsFromProperties(propertiesFilePath, args);
+            } else {
+                LOG.info("No properties file specified, using command line arguments only");
+                options = initialOptions;
+            }
+            
+            // Create pipeline
+            Pipeline pipeline = Pipeline.create(options);
+            
+            // Build and run pipeline
+            runPipeline(pipeline, options);
+            
+            // Execute pipeline
+            pipeline.run().waitUntilFinish();
+            
+        } catch (Exception e) {
+            LOG.error("Pipeline execution failed", e);
+            System.exit(1);
+        }
+    }
+    
+    /**
+     * Load pipeline options from properties file and merge with command line args
+     */
+    private static WorkdayPipelineOptions loadOptionsFromProperties(String propertiesFilePath, String[] originalArgs) {
+        try {
+            // Load properties from file
+            PropertiesReader propertiesReader = new PropertiesReader(propertiesFilePath);
+            
+            // Validate required properties
+            validateRequiredProperties(propertiesReader);
+            
+            // Convert properties to command line arguments
+            String[] propertyArgs = propertiesReader.toCommandLineArgs();
+            
+            // Merge original args with property args (original args take precedence)
+            String[] mergedArgs = mergeArguments(propertyArgs, originalArgs);
+            
+            // Create options from merged arguments
+            return PipelineOptionsFactory.fromArgs(mergedArgs)
+                    .withValidation()
+                    .as(WorkdayPipelineOptions.class);
+                    
+        } catch (Exception e) {
+            LOG.error("Failed to load configuration from properties file: {}", propertiesFilePath, e);
+            throw new RuntimeException("Configuration loading failed", e);
+        }
+    }
+    
+    /**
+     * Validate required properties
+     */
+    private static void validateRequiredProperties(PropertiesReader propertiesReader) {
+        String[] requiredProperties = {
+            "workdayEndpoint",
+            "workdayUsername", 
+            "workdayPassword",
+            "workdayTenant",
+            "serviceName",
+            "operationName",
+            "bigQueryProject",
+            "bigQueryDataset",
+            "bigQueryTable"
+        };
         
-        // Create pipeline
-        Pipeline pipeline = Pipeline.create(options);
+        propertiesReader.validateRequiredProperties(requiredProperties);
+    }
+    
+    /**
+     * Merge command line arguments, giving precedence to original args
+     */
+    private static String[] mergeArguments(String[] propertyArgs, String[] originalArgs) {
+        // Convert arrays to lists for easier manipulation
+        java.util.List<String> mergedList = new java.util.ArrayList<>();
+        java.util.Set<String> originalArgKeys = new java.util.HashSet<>();
         
-        // Build and run pipeline
-        runPipeline(pipeline, options);
+        // First, add all original arguments and track their keys
+        for (String arg : originalArgs) {
+            mergedList.add(arg);
+            if (arg.startsWith("--")) {
+                String key = arg.split("=")[0];
+                originalArgKeys.add(key);
+            }
+        }
         
-        // Execute pipeline
-        pipeline.run().waitUntilFinish();
+        // Then add property arguments that don't conflict with original args
+        for (String arg : propertyArgs) {
+            if (arg.startsWith("--")) {
+                String key = arg.split("=")[0];
+                if (!originalArgKeys.contains(key)) {
+                    mergedList.add(arg);
+                }
+            }
+        }
+        
+        return mergedList.toArray(new String[0]);
     }
     
     /**
