@@ -78,6 +78,19 @@ public class WorkdayApiClient implements Serializable {
         validateDateFormats();
     }
 
+    /**
+     * Static factory method to create WorkdayApiClient with individual parameters
+     * This helps avoid serialization issues in Apache Beam DoFn classes
+     */
+    public static WorkdayApiClient create(String soapApiUrl, String username, String password, String tenantName,
+                                         String apiVersion, Integer requestTimeout, Integer maxRetries, 
+                                         Boolean enablePagination, Integer pageSize, String effectiveFromDate,
+                                         String effectiveToDate, Boolean includeEffectiveFromDate, Boolean includeEffectiveToDate) {
+        return new WorkdayApiClient(soapApiUrl, username, password, tenantName, apiVersion,
+                                   requestTimeout, maxRetries, enablePagination, pageSize,
+                                   effectiveFromDate, effectiveToDate, includeEffectiveFromDate, includeEffectiveToDate);
+    }
+
     private void initializeHttpClient() {
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(

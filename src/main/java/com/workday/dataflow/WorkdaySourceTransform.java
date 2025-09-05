@@ -103,8 +103,8 @@ public class WorkdaySourceTransform extends PTransform<PBegin, PCollection<Worke
         @Setup
         public void setup() {
             LOG.info("Setting up Workday API client");
-            // Use the new constructor that accepts individual parameters
-            this.apiClient = new WorkdayApiClient(
+            // Use the static factory method to create the client
+            this.apiClient = WorkdayApiClient.create(
                 soapApiUrl, username, password, tenantName, apiVersion,
                 requestTimeout, maxRetries, enablePagination, pageSize,
                 effectiveFromDate, effectiveToDate, includeEffectiveFromDate, includeEffectiveToDate
