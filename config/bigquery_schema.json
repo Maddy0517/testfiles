@@ -1,0 +1,104 @@
+[
+  {
+    "name": "worker_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Unique identifier for the worker in Workday"
+  },
+  {
+    "name": "employee_id",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Employee ID number"
+  },
+  {
+    "name": "first_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee first name"
+  },
+  {
+    "name": "last_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee last name"
+  },
+  {
+    "name": "full_name",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee full name (computed field)"
+  },
+  {
+    "name": "email",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee email address"
+  },
+  {
+    "name": "job_title",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee job title"
+  },
+  {
+    "name": "department",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee department"
+  },
+  {
+    "name": "hire_date",
+    "type": "DATE",
+    "mode": "NULLABLE",
+    "description": "Employee hire date"
+  },
+  {
+    "name": "status",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee status (Active, Inactive, etc.)"
+  },
+  {
+    "name": "salary",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Employee salary"
+  },
+  {
+    "name": "location",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Employee work location"
+  },
+  {
+    "name": "manager_id",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Manager's worker ID"
+  },
+  {
+    "name": "last_modified",
+    "type": "TIMESTAMP",
+    "mode": "NULLABLE",
+    "description": "Last modified timestamp from Workday"
+  },
+  {
+    "name": "processed_timestamp",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Timestamp when the record was processed by the pipeline"
+  },
+  {
+    "name": "years_of_service",
+    "type": "INTEGER",
+    "mode": "NULLABLE",
+    "description": "Calculated years of service (computed field)"
+  },
+  {
+    "name": "salary_band",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Salary band category (computed field)"
+  }
+]
