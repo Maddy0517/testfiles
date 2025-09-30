@@ -1,0 +1,68 @@
+# Cloud Build configuration for CI/CD
+# This file automates the build and deployment process
+
+steps:
+  # Step 1: Build the project
+  - name: 'maven:3.8.6-openjdk-11'
+    entrypoint: 'mvn'
+    args: ['clean', 'compile', 'package']
+    id: 'build'
+
+  # Step 2: Run unit tests
+  - name: 'maven:3.8.6-openjdk-11'
+    entrypoint: 'mvn'
+    args: ['test']
+    id: 'test'
+    waitFor: ['build']
+
+  # Step 3: Deploy to Dataflow (for production branch)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" ]]; then
+          echo "Deploying to production Dataflow..."
+          
+          # Set up environment variables
+          export PROJECT_ID=$PROJECT_ID
+          export REGION=${_REGION}
+          export TEMP_LOCATION=${_TEMP_LOCATION}
+          export STAGING_LOCATION=${_STAGING_LOCATION}
+          export DATASET=${_DATASET}
+          export TABLE=${_TABLE}
+          export WORKDAY_ENDPOINT=${_WORKDAY_ENDPOINT}
+          export WORKDAY_TENANT=${_WORKDAY_TENANT}
+          export LOAD_TYPE=${_LOAD_TYPE}
+          export SERVICE_ACCOUNT=${_SERVICE_ACCOUNT}
+          
+          # Get secrets from Secret Manager
+          export WORKDAY_USERNAME=$(gcloud secrets versions access latest --secret="workday-username")
+          export WORKDAY_PASSWORD=$(gcloud secrets versions access latest --secret="workday-password")
+          
+          # Deploy using the deployment script
+          chmod +x deploy-dataflow.sh
+          ./deploy-dataflow.sh
+        else
+          echo "Skipping Dataflow deployment for branch: $BRANCH_NAME"
+        fi
+    id: 'deploy'
+    waitFor: ['test']
+
+# Substitutions (configure these in Cloud Build trigger)
+substitutions:
+  _REGION: 'us-central1'
+  _TEMP_LOCATION: 'gs://${PROJECT_ID}-dataflow/temp'
+  _STAGING_LOCATION: 'gs://${PROJECT_ID}-dataflow/staging'
+  _DATASET: 'workday_data'
+  _TABLE: 'employees'
+  _WORKDAY_ENDPOINT: 'https://wd-services.myworkday.com/ccx/service/tenant/Human_Resources/v41.0'
+  _WORKDAY_TENANT: 'your-tenant'
+  _LOAD_TYPE: 'INCREMENTAL'
+  _SERVICE_ACCOUNT: 'dataflow-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'N1_HIGHCPU_8'
+
+timeout: '3600s'
