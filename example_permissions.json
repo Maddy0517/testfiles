@@ -1,0 +1,53 @@
+{
+  "sales_dataset": {
+    "users": [
+      "sales_manager@example.com",
+      "sales_analyst1@example.com",
+      "sales_analyst2@example.com"
+    ],
+    "groups": [
+      "sales-team@example.com"
+    ],
+    "role": "READER"
+  },
+  "marketing_dataset": {
+    "users": [
+      "marketing_director@example.com",
+      "marketing_analyst@example.com"
+    ],
+    "groups": [
+      "marketing-team@example.com"
+    ],
+    "role": "WRITER"
+  },
+  "finance_dataset": {
+    "users": [
+      "cfo@example.com",
+      "finance_manager@example.com"
+    ],
+    "groups": [
+      "finance-team@example.com"
+    ],
+    "role": "READER"
+  },
+  "hr_dataset": {
+    "users": [
+      "hr_director@example.com"
+    ],
+    "groups": [
+      "hr-team@example.com"
+    ],
+    "role": "OWNER"
+  },
+  "engineering_dataset": {
+    "users": [
+      "cto@example.com",
+      "lead_engineer@example.com"
+    ],
+    "groups": [
+      "engineering-team@example.com",
+      "devops-team@example.com"
+    ],
+    "role": "WRITER"
+  }
+}
