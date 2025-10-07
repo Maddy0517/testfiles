@@ -1,0 +1,166 @@
+{
+  "dataset_access_policies": {
+    "user_isolation": {
+      "description": "Isolate users so they can only see their own datasets",
+      "implementation": "dataset_level_iam",
+      "strategies": [
+        {
+          "name": "dataset_level_permissions",
+          "description": "Use BigQuery dataset-level IAM to control access",
+          "pros": [
+            "Granular control per dataset",
+            "Native BigQuery feature",
+            "Easy to audit and manage"
+          ],
+          "cons": [
+            "Requires manual setup for each dataset",
+            "Can become complex with many users"
+          ]
+        },
+        {
+          "name": "custom_iam_roles",
+          "description": "Create custom IAM roles with restricted permissions",
+          "pros": [
+            "Centralized role management",
+            "Consistent permissions across datasets",
+            "Easier to scale"
+          ],
+          "cons": [
+            "Requires organization-level permissions",
+            "More complex initial setup"
+          ]
+        },
+        {
+          "name": "naming_conventions",
+          "description": "Use naming conventions to organize datasets by user/team",
+          "pros": [
+            "Clear ownership structure",
+            "Easy to identify dataset ownership",
+            "Works with existing IAM"
+          ],
+          "cons": [
+            "Relies on naming discipline",
+            "Doesn't prevent access if permissions are granted"
+          ]
+        }
+      ]
+    },
+    "recommended_approach": {
+      "primary": "dataset_level_permissions",
+      "secondary": "naming_conventions",
+      "tertiary": "custom_iam_roles",
+      "rationale": "Combine dataset-level IAM with naming conventions for best results"
+    }
+  },
+  "access_patterns": {
+    "user_private_datasets": {
+      "pattern": "{username}_{purpose}",
+      "access": "OWNER for user, no other access",
+      "examples": [
+        "john_doe_analytics",
+        "jane_smith_experiments",
+        "data_team_staging"
+      ]
+    },
+    "shared_datasets": {
+      "pattern": "shared_{purpose}",
+      "access": "Explicit user grants with READER/WRITER roles",
+      "examples": [
+        "shared_reference_data",
+        "shared_lookup_tables",
+        "shared_reporting_views"
+      ]
+    },
+    "system_datasets": {
+      "pattern": "system_{purpose}",
+      "access": "Only project owners and service accounts",
+      "examples": [
+        "system_audit_logs",
+        "system_monitoring",
+        "system_metadata"
+      ]
+    },
+    "temporary_datasets": {
+      "pattern": "temp_{username}_{timestamp}",
+      "access": "OWNER for user, automatic cleanup",
+      "examples": [
+        "temp_john_doe_20241007",
+        "temp_analysis_20241007_143022"
+      ]
+    }
+  },
+  "iam_roles": {
+    "standard_roles": {
+      "bigquery.dataViewer": {
+        "description": "Can view all datasets and tables",
+        "use_case": "Not recommended for restricted access"
+      },
+      "bigquery.dataEditor": {
+        "description": "Can edit all datasets and tables",
+        "use_case": "Not recommended for restricted access"
+      },
+      "bigquery.user": {
+        "description": "Can run queries and create jobs",
+        "use_case": "Good base role for all users"
+      }
+    },
+    "custom_roles": {
+      "bigquery.datasetViewer.restricted": {
+        "description": "Can view only assigned datasets",
+        "permissions": [
+          "bigquery.datasets.get",
+          "bigquery.tables.list",
+          "bigquery.tables.get",
+          "bigquery.tables.getData",
+          "bigquery.jobs.create",
+          "bigquery.jobs.list",
+          "bigquery.jobs.get"
+        ]
+      },
+      "bigquery.datasetEditor.restricted": {
+        "description": "Can edit only assigned datasets",
+        "permissions": [
+          "bigquery.datasets.get",
+          "bigquery.datasets.update",
+          "bigquery.tables.list",
+          "bigquery.tables.get",
+          "bigquery.tables.create",
+          "bigquery.tables.update",
+          "bigquery.tables.delete",
+          "bigquery.tables.getData",
+          "bigquery.tables.updateData",
+          "bigquery.jobs.create",
+          "bigquery.jobs.list",
+          "bigquery.jobs.get"
+        ]
+      }
+    }
+  },
+  "implementation_steps": {
+    "immediate_actions": [
+      "Audit current dataset access permissions",
+      "Identify datasets that need restricted access",
+      "Create naming convention policy",
+      "Remove broad BigQuery roles from users"
+    ],
+    "setup_phase": [
+      "Create custom IAM roles (if organization allows)",
+      "Implement dataset-level access controls",
+      "Create user-specific datasets with proper naming",
+      "Set up shared datasets with explicit permissions"
+    ],
+    "ongoing_maintenance": [
+      "Regular access audits",
+      "Automated user onboarding/offboarding",
+      "Monitor for policy violations",
+      "Update access as team structure changes"
+    ]
+  },
+  "security_considerations": {
+    "principle_of_least_privilege": "Grant minimum necessary access",
+    "regular_audits": "Review access permissions quarterly",
+    "access_logging": "Enable BigQuery audit logs",
+    "data_classification": "Classify datasets by sensitivity level",
+    "emergency_access": "Maintain break-glass procedures for emergencies"
+  }
+}

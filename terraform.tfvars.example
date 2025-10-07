@@ -1,0 +1,41 @@
+# Example Terraform variables file for BigQuery access control
+# Copy this file to terraform.tfvars and customize for your environment
+
+# Required: Your Google Cloud Project ID
+project_id = "your-project-id-here"
+
+# Optional: Organization ID (if your project is part of an organization)
+organization_id = "123456789012"
+
+# Optional: Default region
+region = "us-central1"
+
+# Users configuration
+# Each user will get their own private dataset plus access to specified shared datasets
+users = [
+  {
+    email    = "john.doe@company.com"
+    role     = "editor"  # "viewer" or "editor"
+    datasets = [
+      "shared_reference_data",
+      "shared_reporting"
+    ]
+  },
+  {
+    email    = "jane.smith@company.com"
+    role     = "viewer"
+    datasets = [
+      "shared_reference_data",
+      "shared_lookup_tables"
+    ]
+  },
+  {
+    email    = "data.analyst@company.com"
+    role     = "editor"
+    datasets = [
+      "shared_reference_data",
+      "shared_lookup_tables",
+      "shared_reporting"
+    ]
+  }
+]
