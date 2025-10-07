@@ -1,0 +1,51 @@
+# BigQuery Profile Configuration for dbt
+# This file should be placed in ~/.dbt/ directory or in your project root
+
+analytics_project:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account # or oauth
+      project: your-gcp-project-id  # Replace with your GCP project ID
+      dataset: dbt_dev  # Replace with your desired dataset name
+      threads: 4
+      timeout_seconds: 300
+      location: US  # or EU, asia-northeast1, etc.
+      priority: interactive
+      retries: 1
+      
+      # For service account authentication (recommended for production)
+      keyfile: /path/to/your/service-account-key.json  # Replace with actual path
+      
+      # For OAuth authentication (good for development)
+      # Remove keyfile line above and uncomment below for OAuth
+      # method: oauth
+      # refresh_token: your-refresh-token
+      # client_id: your-client-id
+      # client_secret: your-client-secret
+      # token_uri: https://oauth2.googleapis.com/token
+      
+    prod:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id  # Replace with your production GCP project ID
+      dataset: dbt_prod  # Replace with your production dataset name
+      threads: 8
+      timeout_seconds: 300
+      location: US
+      priority: interactive
+      retries: 1
+      keyfile: /path/to/your/prod-service-account-key.json  # Replace with actual path
+      
+    test:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id  # Replace with your test GCP project ID
+      dataset: dbt_test  # Replace with your test dataset name
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      priority: interactive
+      retries: 1
+      keyfile: /path/to/your/test-service-account-key.json  # Replace with actual path

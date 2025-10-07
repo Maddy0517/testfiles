@@ -1,0 +1,17 @@
+category_id,category_name,category_group,is_active
+1,Electronics,Technology,true
+2,Computers,Technology,true
+3,Phones,Technology,true
+4,Clothing,Fashion,true
+5,Shoes,Fashion,true
+6,Accessories,Fashion,true
+7,Books,Media,true
+8,Music,Media,true
+9,Movies,Media,true
+10,Home,Home & Garden,true
+11,Garden,Home & Garden,true
+12,Furniture,Home & Garden,true
+13,Sports,Recreation,true
+14,Toys,Recreation,true
+15,Health,Health & Beauty,true
+16,Beauty,Health & Beauty,true
