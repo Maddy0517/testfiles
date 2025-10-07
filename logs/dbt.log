@@ -1,0 +1,52 @@
+[0m14:17:54.282337 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c284506e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c27c4c690>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c276c3d90>]}
+
+
+============================== 14:17:54.287940 | fff59207-0373-4b19-9034-59ba062ae5cf ==============================
+[0m14:17:54.287940 [info ] [MainThread]: Running with dbt=1.11.0-b2
+[0m14:17:54.288790 [debug] [MainThread]: running dbt with arguments {'static_parser': 'True', 'quiet': 'False', 'invocation_command': 'dbt init analytics_project --profiles-dir .', 'target_path': 'None', 'warn_error': 'None', 'fail_fast': 'False', 'log_path': 'logs', 'version_check': 'True', 'debug': 'False', 'cache_selected_only': 'False', 'introspect': 'True', 'write_json': 'True', 'partial_parse': 'True', 'indirect_selection': 'eager', 'use_experimental_parser': 'False', 'profiles_dir': '.', 'send_anonymous_usage_stats': 'True', 'log_cache_events': 'False', 'log_format': 'default', 'empty': 'None', 'use_colors': 'True', 'no_print': 'None', 'printer_width': '80', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])'}
+[0m14:17:54.303247 [debug] [MainThread]: Starter project path: /home/ubuntu/.local/lib/python3.13/site-packages/dbt/include/starter_project
+[0m14:17:54.306468 [info ] [MainThread]: 
+Your new dbt project "analytics_project" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m14:17:54.306982 [info ] [MainThread]: Setting up your profile.
+[0m14:17:54.307843 [error] [MainThread]: Encountered an error:
+
+[0m14:17:54.310796 [error] [MainThread]: Traceback (most recent call last):
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/cli/requires.py", line 178, in wrapper
+    result, success = func(*args, **kwargs)
+                      ~~~~^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/cli/requires.py", line 128, in wrapper
+    return func(*args, **kwargs)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/cli/main.py", line 483, in init
+    results = task.run()
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/task/init.py", line 346, in run
+    self.setup_profile(profile_name)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/task/init.py", line 261, in setup_profile
+    adapter = self.ask_for_adapter_choice()
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/dbt/task/init.py", line 242, in ask_for_adapter_choice
+    numeric_choice = click.prompt(prompt_msg, type=click.INT)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/click/termui.py", line 168, in prompt
+    value = prompt_func(prompt)
+  File "/home/ubuntu/.local/lib/python3.13/site-packages/click/termui.py", line 151, in prompt_func
+    raise Abort() from None
+click.exceptions.Abort
+
+[0m14:17:54.312271 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": false, "command_wall_clock_time": 0.10832868, "process_in_blocks": "0", "process_kernel_time": 0.283599, "process_mem_max_rss": "100964", "process_out_blocks": "64", "process_user_time": 1.665611}
+[0m14:17:54.313045 [debug] [MainThread]: Command `dbt init` failed at 14:17:54.312864 after 0.11 seconds
+[0m14:17:54.313470 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c275696e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c2757a330>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x7f4c277718c0>]}
+[0m14:17:54.313990 [debug] [MainThread]: Flushing usage events
+[0m14:17:54.641788 [debug] [MainThread]: An error was encountered while trying to flush usage events
