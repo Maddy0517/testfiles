@@ -1,0 +1,68 @@
+# This file should be copied to ~/.dbt/profiles.yml and configured with your credentials
+# NEVER commit this file with actual credentials to version control
+
+my_bigquery_project:
+  target: dev
+  outputs:
+    # Development environment - your personal dev environment
+    dev:
+      type: bigquery
+      method: oauth  # Use 'service-account' for CI/CD
+      project: your-gcp-project-id  # Replace with your GCP project ID
+      dataset: dbt_dev_{{ env_var('USER') | replace('.', '_') }}  # Creates user-specific datasets
+      threads: 4  # Number of parallel threads
+      location: US  # BigQuery dataset location: US, EU, asia-northeast1, etc.
+      timeout_seconds: 300
+      priority: interactive  # interactive or batch
+      retries: 1
+      maximum_bytes_billed: 1000000000  # 1 GB limit for dev to prevent accidents
+      impersonate_service_account: "{{ env_var('DBT_IMPERSONATE_SA', '') }}"  # Optional
+
+    # CI environment - for automated testing in CI/CD pipelines
+    ci:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id  # Replace with your GCP project ID
+      dataset: dbt_ci
+      threads: 8
+      # Use environment variable for CI service account
+      keyfile: "{{ env_var('BIGQUERY_SERVICE_ACCOUNT_JSON') }}"
+      location: US
+      timeout_seconds: 300
+      priority: interactive
+      retries: 2
+      maximum_bytes_billed: 10000000000  # 10 GB limit for CI
+
+    # Staging/QA environment
+    staging:
+      type: bigquery
+      method: service-account
+      project: your-staging-project-id  # Replace with your staging GCP project ID
+      dataset: dbt_staging
+      threads: 8
+      keyfile: /path/to/staging-service-account-key.json
+      location: US
+      timeout_seconds: 600
+      priority: interactive
+      retries: 2
+      execution_project: your-staging-project-id  # Project for running queries (can be different)
+
+    # Production environment
+    prod:
+      type: bigquery
+      method: service-account
+      project: your-prod-project-id  # Replace with your production GCP project ID
+      dataset: dbt_prod
+      threads: 16  # More threads for production
+      keyfile: /path/to/prod-service-account-key.json
+      location: US
+      timeout_seconds: 900
+      priority: batch  # Use batch for better pricing in production
+      retries: 3
+      job_retry_deadline_seconds: 1200  # Retry deadline for the job
+      job_creation_timeout_seconds: 120  # Timeout for job creation
+      # Labels for cost tracking
+      job_label:
+        team: data-engineering
+        environment: production
+        tool: dbt

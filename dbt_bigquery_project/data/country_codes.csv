@@ -1,0 +1,18 @@
+country_code,country_name,region,is_eu
+USA,United States,North America,false
+CAN,Canada,North America,false
+GBR,United Kingdom,Europe,false
+DEU,Germany,Europe,true
+FRA,France,Europe,true
+ITA,Italy,Europe,true
+ESP,Spain,Europe,true
+NLD,Netherlands,Europe,true
+BEL,Belgium,Europe,true
+AUS,Australia,Oceania,false
+NZL,New Zealand,Oceania,false
+JPN,Japan,Asia,false
+CHN,China,Asia,false
+IND,India,Asia,false
+BRA,Brazil,South America,false
+MEX,Mexico,North America,false
+ARG,Argentina,South America,false

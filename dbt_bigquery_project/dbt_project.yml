@@ -1,0 +1,155 @@
+# Name your project! Project names should contain only lowercase characters
+# and underscores. A good package name should reflect your organization's
+# name or the intended use of these models
+name: 'analytics_warehouse'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'my_bigquery_project'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+# Configuring models
+models:
+  analytics_warehouse:
+    # Config for all models
+    +persist_docs:
+      relation: true
+      columns: true
+    
+    # Staging layer configuration
+    staging:
+      +materialized: view
+      +schema: staging
+      # Add tags for easy selection
+      +tags: ['staging', 'daily']
+      
+      # Source-specific configurations
+      bigquery_source:
+        +enabled: true
+      
+      external_apis:
+        +enabled: true
+        +tags: ['external']
+    
+    # Intermediate layer configuration
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+      +tags: ['intermediate']
+    
+    # Marts layer configuration
+    marts:
+      +materialized: table
+      +schema: marts
+      
+      # Department-specific marts
+      finance:
+        +schema: finance
+        +tags: ['finance', 'daily']
+        # BigQuery specific - partition tables
+        +partition_by:
+          field: date_day
+          data_type: date
+          granularity: day
+      
+      marketing:
+        +schema: marketing
+        +tags: ['marketing', 'daily']
+        +cluster_by: ['customer_segment', 'channel']
+      
+      operations:
+        +schema: operations
+        +tags: ['operations', 'hourly']
+
+# Snapshot configuration
+snapshots:
+  analytics_warehouse:
+    +target_schema: snapshots
+    +unique_key: id
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Seed configuration
+seeds:
+  analytics_warehouse:
+    +schema: seeds
+    # Override column types for specific seeds
+    country_codes:
+      +column_types:
+        country_code: string
+        country_name: string
+
+# Variable configuration
+vars:
+  # Date variables for incremental models
+  start_date: '2020-01-01'
+  end_date: '{{ run_started_at.strftime("%Y-%m-%d") }}'
+  
+  # Lookback window for incremental models (in days)
+  incremental_lookback: 3
+  
+  # Environment-specific variables
+  dev:
+    # Sample data in dev for faster iteration
+    sample_rate: 0.01
+    max_days_back: 30
+  
+  prod:
+    sample_rate: 1.0
+    max_days_back: 730
+  
+  # Business rules
+  high_value_customer_threshold: 1000
+  churn_days_threshold: 90
+
+# Configuring tests
+tests:
+  analytics_warehouse:
+    # Set severity for all tests
+    +severity: warn
+    
+    # Store test failures in a table
+    +store_failures: true
+    +schema: test_failures
+
+# Configure quoting for BigQuery
+quoting:
+  database: false
+  schema: false
+  identifier: false
+
+# BigQuery specific settings
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: ['analytics_warehouse', 'dbt_utils']
+
+# Query comments for better debugging
+query-comment:
+  comment: "{{ query_comment(node) }}"
+  append: true
+
+# Grants configuration (BigQuery specific)
+grants:
+  select: ["data_analyst", "data_scientist"]
+
+# On-run hooks
+on-run-start:
+  - "{{ log('Starting dbt run at: ' ~ run_started_at, info=True) }}"
+  - "CREATE SCHEMA IF NOT EXISTS {{ target.schema }}_audit"
+
+on-run-end:
+  - "{{ log('Completed dbt run at: ' ~ run_started_at, info=True) }}"
+  - "INSERT INTO {{ target.schema }}_audit.dbt_runs (run_id, run_started_at, target_name, status) VALUES ('{{ invocation_id }}', '{{ run_started_at }}', '{{ target.name }}', 'success')"

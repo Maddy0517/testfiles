@@ -1,0 +1,239 @@
+version: 2
+
+sources:
+  # E-commerce raw data source
+  - name: ecommerce_raw
+    description: |
+      Raw data from our e-commerce platform.
+      This data is loaded via Airbyte/Fivetran/Stitch from our production PostgreSQL database.
+    database: "{{ env_var('GCP_PROJECT', 'your-gcp-project-id') }}"  # Your GCP project
+    schema: raw_ecommerce  # BigQuery dataset name
+    
+    # Configure freshness checks for all tables
+    freshness:
+      warn_after: {count: 24, period: hour}
+      error_after: {count: 48, period: hour}
+    
+    # Configure data loading
+    loader: airbyte
+    loaded_at_field: _airbyte_emitted_at  # or _fivetran_synced for Fivetran
+    
+    tables:
+      - name: customers
+        description: Customer master data
+        columns:
+          - name: customer_id
+            description: Primary key - unique customer identifier
+            tests:
+              - unique
+              - not_null
+          - name: email
+            description: Customer email address
+            tests:
+              - unique
+              - not_null
+          - name: first_name
+            description: Customer first name
+          - name: last_name
+            description: Customer last name
+          - name: created_at
+            description: Timestamp when customer was created
+            tests:
+              - not_null
+          - name: updated_at
+            description: Timestamp when customer record was last updated
+          - name: customer_lifetime_value
+            description: Total amount spent by customer
+          - name: customer_segment
+            description: Customer segmentation (VIP, Regular, New)
+            tests:
+              - accepted_values:
+                  values: ['VIP', 'Regular', 'New', 'Churned']
+          - name: country
+            description: Customer's country
+          - name: state
+            description: Customer's state/province
+          - name: city
+            description: Customer's city
+
+      - name: orders
+        description: Order transactions
+        columns:
+          - name: order_id
+            description: Primary key - unique order identifier
+            tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: Foreign key to customers table
+            tests:
+              - not_null
+              - relationships:
+                  to: source('ecommerce_raw', 'customers')
+                  field: customer_id
+          - name: order_date
+            description: Date when order was placed
+            tests:
+              - not_null
+          - name: status
+            description: Order status
+            tests:
+              - accepted_values:
+                  values: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']
+          - name: total_amount
+            description: Total order amount in cents
+            tests:
+              - not_null
+          - name: currency
+            description: Currency code (USD, EUR, GBP)
+            tests:
+              - accepted_values:
+                  values: ['USD', 'EUR', 'GBP', 'CAD', 'AUD']
+          - name: payment_method
+            description: Payment method used
+            tests:
+              - accepted_values:
+                  values: ['credit_card', 'debit_card', 'paypal', 'stripe', 'bank_transfer']
+          - name: shipping_address
+            description: Shipping address JSON
+          - name: created_at
+            description: Order creation timestamp
+          - name: updated_at
+            description: Last update timestamp
+
+      - name: order_items
+        description: Individual items within orders
+        columns:
+          - name: order_item_id
+            description: Primary key
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            description: Foreign key to orders
+            tests:
+              - not_null
+              - relationships:
+                  to: source('ecommerce_raw', 'orders')
+                  field: order_id
+          - name: product_id
+            description: Foreign key to products
+            tests:
+              - not_null
+              - relationships:
+                  to: source('ecommerce_raw', 'products')
+                  field: product_id
+          - name: quantity
+            description: Quantity ordered
+            tests:
+              - not_null
+          - name: unit_price
+            description: Price per unit in cents
+            tests:
+              - not_null
+          - name: discount_amount
+            description: Discount applied in cents
+          - name: tax_amount
+            description: Tax amount in cents
+
+      - name: products
+        description: Product catalog
+        columns:
+          - name: product_id
+            description: Primary key - unique product identifier
+            tests:
+              - unique
+              - not_null
+          - name: sku
+            description: Stock keeping unit
+            tests:
+              - unique
+              - not_null
+          - name: product_name
+            description: Product name
+            tests:
+              - not_null
+          - name: category
+            description: Product category
+          - name: subcategory
+            description: Product subcategory
+          - name: brand
+            description: Product brand
+          - name: price
+            description: Current price in cents
+            tests:
+              - not_null
+          - name: cost
+            description: Product cost in cents
+          - name: weight
+            description: Product weight in grams
+          - name: is_active
+            description: Whether product is currently active
+          - name: created_at
+            description: Product creation date
+          - name: updated_at
+            description: Last update timestamp
+
+  # Google Analytics data
+  - name: google_analytics
+    description: Web analytics data from Google Analytics 4
+    database: "{{ env_var('GCP_PROJECT', 'your-gcp-project-id') }}"
+    schema: analytics_246912345  # Your GA4 BigQuery export dataset
+    tables:
+      - name: events_*
+        description: Daily event tables from GA4
+        identifier: events_{{ var('date_suffix', '20240101') }}  # Dynamic table suffix
+        columns:
+          - name: event_date
+            description: Date of the event (YYYYMMDD format)
+          - name: event_timestamp
+            description: Timestamp of the event in microseconds
+          - name: event_name
+            description: Name of the event
+          - name: user_pseudo_id
+            description: Pseudonymous user identifier
+          - name: user_id
+            description: User ID if set via gtag
+          - name: geo
+            description: Geographic information
+          - name: device
+            description: Device information
+          - name: traffic_source
+            description: Traffic source information
+          - name: event_params
+            description: Array of event parameters
+          - name: user_properties
+            description: Array of user properties
+
+  # External API data
+  - name: external_apis
+    description: Data from external APIs loaded into BigQuery
+    database: "{{ env_var('GCP_PROJECT', 'your-gcp-project-id') }}"
+    schema: external_data
+    tables:
+      - name: exchange_rates
+        description: Daily currency exchange rates
+        freshness:
+          warn_after: {count: 2, period: day}
+          error_after: {count: 7, period: day}
+        loaded_at_field: loaded_at
+        columns:
+          - name: date
+            description: Date of exchange rate
+            tests:
+              - not_null
+          - name: base_currency
+            description: Base currency (always USD)
+            tests:
+              - accepted_values:
+                  values: ['USD']
+          - name: target_currency
+            description: Target currency code
+            tests:
+              - not_null
+          - name: exchange_rate
+            description: Exchange rate value
+            tests:
+              - not_null
+          - name: loaded_at
+            description: Timestamp when data was loaded

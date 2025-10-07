@@ -1,0 +1,21 @@
+version: 2
+
+seeds:
+  - name: country_codes
+    description: Reference data for country codes and regions
+    columns:
+      - name: country_code
+        description: ISO 3-letter country code
+        tests:
+          - unique
+          - not_null
+      - name: country_name
+        description: Full country name
+        tests:
+          - not_null
+      - name: region
+        description: Geographic region
+        tests:
+          - not_null
+      - name: is_eu
+        description: Flag indicating if country is in EU

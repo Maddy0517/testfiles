@@ -1,0 +1,208 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: |
+      # Fact Orders Table
+      
+      This table contains one row per order with aggregated metrics.
+      
+      ## Key Features:
+      - Incrementally updated based on order_date
+      - Partitioned by order_date for optimal query performance
+      - Clustered by customer_id and order_status
+      - All amounts are converted to USD for consistency
+      
+      ## Update Frequency:
+      - Incremental updates every 4 hours
+      - Full refresh weekly on Sundays
+      
+      ## Data Quality Notes:
+      - Orders before 2020-01-01 may have incomplete product information
+      - Exchange rates are updated daily; orders use the rate from their order date
+      
+    columns:
+      - name: order_id
+        description: Unique identifier for the order
+        tests:
+          - unique
+          - not_null
+          
+      - name: customer_id
+        description: Foreign key to dim_customers
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id
+              
+      - name: order_date
+        description: Date when the order was placed
+        tests:
+          - not_null
+          
+      - name: order_status
+        description: Current status of the order
+        tests:
+          - accepted_values:
+              values: ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED']
+              
+      - name: total_revenue_usd
+        description: Total order amount in USD including tax
+        tests:
+          - not_negative
+          
+      - name: gross_margin_usd
+        description: Gross margin in USD (revenue - cost)
+        
+      - name: order_margin_percentage
+        description: Gross margin as a percentage of net revenue
+        tests:
+          - not_null
+          
+      - name: item_count
+        description: Number of line items in the order
+        tests:
+          - not_null
+          - not_negative
+
+    tests:
+      - dbt_utils.recency:
+          datepart: day
+          field: order_date
+          interval: 1
+          
+  - name: dim_customers
+    description: |
+      # Customer Dimension Table
+      
+      This table contains the current state of all customers with enriched attributes.
+      
+      ## Key Features:
+      - Type 2 slowly changing dimension (SCD2)
+      - Includes RFM (Recency, Frequency, Monetary) analysis
+      - Customer lifetime value calculations
+      - Churn prediction indicators
+      
+      ## RFM Segments:
+      - **Champions**: Best customers (high RFM scores)
+      - **Loyal Customers**: High frequency and monetary value
+      - **At Risk**: Were good customers but haven't purchased recently
+      - **New Customers**: Recently acquired customers
+      
+      ## Update Frequency:
+      - Daily at 2 AM UTC
+      
+    columns:
+      - name: customer_id
+        description: Unique identifier for the customer
+        tests:
+          - unique
+          - not_null
+          
+      - name: email
+        description: Customer email address (PII - handle with care)
+        tests:
+          - unique
+          - not_null
+          - valid_email
+          
+      - name: full_name
+        description: Customer full name (PII - handle with care)
+        
+      - name: customer_segment
+        description: Original customer segment from source system
+        tests:
+          - accepted_values:
+              values: ['VIP', 'REGULAR', 'NEW', 'CHURNED']
+              
+      - name: rfm_segment
+        description: Customer segment based on RFM analysis
+        tests:
+          - not_null
+          
+      - name: lifetime_revenue_usd
+        description: Total revenue from customer in USD
+        tests:
+          - not_negative
+          
+      - name: is_churned
+        description: Flag indicating if customer has churned (no purchase in last 90 days)
+        tests:
+          - not_null
+          
+      - name: customer_value_tier
+        description: Customer tier based on lifetime value
+        tests:
+          - accepted_values:
+              values: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Prospect']
+              
+      - name: days_since_last_order
+        description: Number of days since customer's last order
+        tests:
+          - not_negative
+
+# Define metrics for the semantic layer (dbt v1.6+)
+metrics:
+  - name: total_revenue
+    label: Total Revenue
+    model: ref('fct_orders')
+    description: Total revenue in USD
+    
+    calculation_method: sum
+    expression: total_revenue_usd
+    
+    timestamp: order_date
+    time_grains: [day, week, month, quarter, year]
+    
+    dimensions:
+      - order_status
+      - payment_method_group
+      - order_size_category
+      
+  - name: order_count
+    label: Number of Orders
+    model: ref('fct_orders')
+    description: Count of orders
+    
+    calculation_method: count_distinct
+    expression: order_id
+    
+    timestamp: order_date
+    time_grains: [day, week, month, quarter, year]
+    
+  - name: average_order_value
+    label: Average Order Value
+    model: ref('fct_orders')
+    description: Average order value in USD
+    
+    calculation_method: average
+    expression: total_revenue_usd
+    
+    timestamp: order_date
+    time_grains: [day, week, month, quarter, year]
+    
+  - name: customer_count
+    label: Active Customers
+    model: ref('dim_customers')
+    description: Count of active (non-churned) customers
+    
+    calculation_method: count_distinct
+    expression: customer_id
+    
+    filters:
+      - field: is_churned
+        operator: '='
+        value: 'false'
+        
+  - name: churn_rate
+    label: Customer Churn Rate
+    model: ref('dim_customers')
+    description: Percentage of customers who have churned
+    
+    calculation_method: derived
+    expression: "sum(case when is_churned then 1 else 0 end) * 100.0 / nullif(count(*), 0)"
+    
+    dimensions:
+      - customer_value_tier
+      - rfm_segment
