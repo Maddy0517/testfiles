@@ -1,0 +1,10 @@
+# Example users file for bulk dataset creation
+# One email per line
+john.doe@example.com
+jane.smith@example.com
+bob.wilson@example.com
+alice.johnson@example.com
+david.brown@example.com
+sarah.davis@example.com
+michael.garcia@example.com
+emma.martinez@example.com

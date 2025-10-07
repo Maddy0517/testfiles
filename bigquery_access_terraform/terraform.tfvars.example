@@ -1,0 +1,76 @@
+# Example Terraform variables file for BigQuery dataset access control
+# Copy this to terraform.tfvars and update with your values
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+dataset_location = "US"
+
+# User-specific datasets - each user can only access their own dataset
+user_datasets = {
+  "dataset_john_doe" = {
+    user_email  = "john.doe@example.com"
+    role        = "OWNER"
+    description = "Personal dataset for John Doe"
+  }
+  
+  "dataset_jane_smith" = {
+    user_email  = "jane.smith@example.com"
+    role        = "OWNER"
+    description = "Personal dataset for Jane Smith"
+  }
+  
+  "dataset_bob_wilson" = {
+    user_email  = "bob.wilson@example.com"
+    role        = "OWNER"
+    description = "Personal dataset for Bob Wilson"
+  }
+}
+
+# Shared datasets with controlled access
+shared_datasets = {
+  "marketing_data" = {
+    description = "Marketing team shared dataset"
+    users = [
+      {
+        email = "marketing_lead@example.com"
+        role  = "OWNER"
+      },
+      {
+        email = "analyst1@example.com"
+        role  = "WRITER"
+      }
+    ]
+    groups = [
+      {
+        email = "marketing-team@example.com"
+        role  = "READER"
+      }
+    ]
+    service_accounts = [
+      {
+        email = "marketing-etl@project.iam.gserviceaccount.com"
+        role  = "WRITER"
+      }
+    ]
+  }
+  
+  "sales_data" = {
+    description = "Sales team shared dataset"
+    users = [
+      {
+        email = "sales_lead@example.com"
+        role  = "OWNER"
+      }
+    ]
+    groups = [
+      {
+        email = "sales-team@example.com"
+        role  = "READER"
+      }
+    ]
+    service_accounts = []
+  }
+}
+
+# Optional: KMS key for encryption
+# kms_key_name = "projects/your-project/locations/us/keyRings/your-keyring/cryptoKeys/your-key"
