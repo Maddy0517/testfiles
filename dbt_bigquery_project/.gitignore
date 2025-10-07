@@ -1,0 +1,44 @@
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Python
+venv/
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# Environment files
+.env
+.env.local
+
+# Credentials - NEVER commit these!
+*.json
+*credentials*
+*keyfile*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Profiles - contains sensitive connection info
+profiles.yml
+
+# But keep the example
+!profiles.yml.example
+
+# Documentation build
+site/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS Files
+Thumbs.db
