@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group 'com.example'
+version '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.bouncycastle:bcpg-jdk18on:1.78'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.78'
+}
+
+application {
+    mainClass = 'com.example.pgp.PgpDecryptionExample'
+}
+
+// Task to create a fat JAR with all dependencies
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': 'com.example.pgp.PgpDecryptionExample'
+    }
+    archiveClassifier = 'all'
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+    
+    // Resolve duplicate files
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Task to download dependencies for manual compilation
+task downloadDeps(type: Copy) {
+    from configurations.runtimeClasspath
+    into 'lib'
+}
