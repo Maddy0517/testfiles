@@ -1,0 +1,2 @@
+Hello World! This is a secret message that will be encrypted with RSA.
+This demonstrates file encryption and decryption using RSA keys.
