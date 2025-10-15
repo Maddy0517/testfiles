@@ -21,12 +21,13 @@ BEGIN
         EMPLOYEE_ID,
         WORK_DATE,
         MANAGER_NAME,
-        -- Aggregate scheduled hours by pay code type
-        SUM(CASE 
-          WHEN PAY_CODE = 'SCHEDULE_HOURS' 
-          THEN DATETIME_DIFF(SCHEDULED_END_DTTM, SCHEDULED_START_DTTM, MINUTE) / 60.0 
-          ELSE 0 
-        END) as scheduled_hours,
+        -- Create schedule time range (e.g., "8AM - 5PM")
+        CONCAT(
+          FORMAT_DATETIME('%l%p', MIN(CASE WHEN PAY_CODE != 'SCHEDULE_MEAL_BREAK' THEN SCHEDULED_START_DTTM END)),
+          ' - ',
+          FORMAT_DATETIME('%l%p', MAX(CASE WHEN PAY_CODE != 'SCHEDULE_MEAL_BREAK' THEN SCHEDULED_END_DTTM END))
+        ) as schedule_range,
+        -- Calculate total scheduled hours (excluding meal breaks)
         SUM(CASE 
           WHEN PAY_CODE IN ('SCHEDULE_HOURS', 'SCHEDULE_JS') 
           THEN DATETIME_DIFF(SCHEDULED_END_DTTM, SCHEDULED_START_DTTM, MINUTE) / 60.0 
@@ -192,7 +193,7 @@ BEGIN
       COALESCE(ts.EMPLOYEE_ID, sd.EMPLOYEE_ID) as Employee_ID,
       COALESCE(sd.schedule_pay_codes, 'SCHEDULE') as Pay_Code, -- From SCHEDULE_DETAIL table
       COALESCE(ts.WORK_DATE, sd.WORK_DATE) as WORK_DATE,
-      sd.scheduled_hours as Schedule_Hours,
+      sd.schedule_range as Schedule,
       sd.scheduled_total as Scheduled_Total,
       ts.LOCATION,
       ts.COST_CENTER,
