@@ -98,8 +98,6 @@ BEGIN
       MAX(COST_CENTER) AS COST_CENTER,
       NULL AS WORKED_PROJECT,
       MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
-      SUM(worked_hours) AS total_worked_hours,
-      
       -- Calculate hours by PAY_CODE from timesheet data
       SUM(CASE WHEN PAY_CODE = 'OUTSIDE_OF_SCHEDULE' THEN worked_hours ELSE 0 END) AS SCHEDULE_OUTSIDE,
       SUM(CASE WHEN PAY_CODE = 'ON_CALL' THEN worked_hours ELSE 0 END) AS ON_CALL_HOURS,
@@ -246,6 +244,10 @@ BEGIN
   final_calculation AS (
     SELECT 
       *,
+      -- Calculate total worked hours as sum of all pay code categories
+      (SCHEDULE_OUTSIDE + ON_CALL_HOURS + REGULAR_HOURS + OVERTIME_HOURS + 
+       DOUBLE_TIME_HOURS + DOUBLE_TIME_NIGHT_HOURS + DOUBLE_TIME_SWING_HOURS) AS total_worked_hours,
+      
       -- Use pay code-based calculations from timesheet data
       ON_CALL_HOURS AS ON_CALL,
       REGULAR_HOURS AS REGULAR,
