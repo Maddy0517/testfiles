@@ -133,7 +133,7 @@ BEGIN
       s.scheduled_hours,
       s.SCHEDULED_START_DTTM,
       s.SCHEDULED_END_DTTM,
-      s.AS_JOB AS SCHEDULE,
+      s.PAY_CODE AS SCHEDULE,
       
       -- Calculate hours worked within scheduled time
       CASE 
