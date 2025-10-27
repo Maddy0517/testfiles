@@ -99,7 +99,6 @@ BEGIN
       NULL AS WORKED_PROJECT,
       MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
       -- Calculate hours by PAY_CODE from timesheet data
-      SUM(CASE WHEN PAY_CODE = 'OUTSIDE_OF_SCHEDULE' THEN worked_hours ELSE 0 END) AS SCHEDULE_OUTSIDE,
       SUM(CASE WHEN PAY_CODE = 'ON_CALL' THEN worked_hours ELSE 0 END) AS ON_CALL_HOURS,
       SUM(CASE WHEN PAY_CODE = 'REG' THEN worked_hours ELSE 0 END) AS REGULAR_HOURS,
       SUM(CASE WHEN PAY_CODE = 'OT_15' THEN worked_hours ELSE 0 END) AS OVERTIME_HOURS,
@@ -245,7 +244,7 @@ BEGIN
     SELECT 
       *,
       -- Calculate total worked hours as sum of all pay code categories
-      (SCHEDULE_OUTSIDE + ON_CALL_HOURS + REGULAR_HOURS + OVERTIME_HOURS + 
+      (ON_CALL_HOURS + REGULAR_HOURS + OVERTIME_HOURS + 
        DOUBLE_TIME_HOURS + DOUBLE_TIME_NIGHT_HOURS + DOUBLE_TIME_SWING_HOURS) AS total_worked_hours,
       
       -- Use pay code-based calculations from timesheet data
@@ -275,7 +274,6 @@ BEGIN
     WORKED_SUPERVISOR,
     total_worked_hours AS HOURS_WORKED,
     hours_outside_schedule AS HOURS_WORKED_OUTSIDE_OF_SCHEDULE,
-    SCHEDULE_OUTSIDE,
     ON_CALL,
     PAGER_PAY,
     REGULAR,
