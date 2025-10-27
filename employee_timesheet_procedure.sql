@@ -88,7 +88,7 @@ BEGIN
     FROM timesheet_parsed
   ),
   
-  -- Aggregate timesheet data by employee and date
+  -- Aggregate timesheet data by employee and date with pay code calculations
   timesheet_aggregated AS (
     SELECT 
       EMPLOYEE_NAME,
@@ -99,6 +99,15 @@ BEGIN
       NULL AS WORKED_PROJECT,
       MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
       SUM(worked_hours) AS total_worked_hours,
+      
+      -- Calculate hours by PAY_CODE from timesheet data
+      SUM(CASE WHEN PAY_CODE = 'OUTSIDE_OF_SCHEDULE' THEN worked_hours ELSE 0 END) AS SCHEDULE_OUTSIDE,
+      SUM(CASE WHEN PAY_CODE = 'ON_CALL' THEN worked_hours ELSE 0 END) AS ON_CALL_HOURS,
+      SUM(CASE WHEN PAY_CODE = 'REG' THEN worked_hours ELSE 0 END) AS REGULAR_HOURS,
+      SUM(CASE WHEN PAY_CODE = 'OT_15' THEN worked_hours ELSE 0 END) AS OVERTIME_HOURS,
+      SUM(CASE WHEN PAY_CODE = 'DT_20' THEN worked_hours ELSE 0 END) AS DOUBLE_TIME_HOURS,
+      SUM(CASE WHEN PAY_CODE = 'DT_20_NIGHT' THEN worked_hours ELSE 0 END) AS DOUBLE_TIME_NIGHT_HOURS,
+      SUM(CASE WHEN PAY_CODE = 'DT_20_SWING' THEN worked_hours ELSE 0 END) AS DOUBLE_TIME_SWING_HOURS,
       
       -- Punch data (up to 8 punches) - using global sequence
       CAST(MAX(CASE WHEN global_punch_sequence = 1 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_1,
@@ -233,43 +242,19 @@ BEGIN
       AND t.WORK_DATE = s.WORK_DATE
   ),
   
-  -- Calculate pay categories
+  -- Calculate pay categories based on PAY_CODE from timesheet data
   final_calculation AS (
     SELECT 
       *,
-      -- Regular hours (first 8 hours)
-      LEAST(total_worked_hours, 8.0) AS REGULAR,
+      -- Use pay code-based calculations from timesheet data
+      ON_CALL_HOURS AS ON_CALL,
+      REGULAR_HOURS AS REGULAR,
+      OVERTIME_HOURS AS OVERTIME,
+      DOUBLE_TIME_HOURS AS DOUBLE_TIME,
+      DOUBLE_TIME_NIGHT_HOURS AS DOUBLE_TIME_NIGHT,
+      DOUBLE_TIME_SWING_HOURS AS DOUBLE_TIME_SWING,
       
-      -- Overtime (hours 8.01 to 12)
-      CASE 
-        WHEN total_worked_hours > 8.0 THEN 
-          LEAST(total_worked_hours - 8.0, 4.0)
-        ELSE 0
-      END AS OVERTIME,
-      
-      -- Double time (hours over 12)
-      CASE 
-        WHEN total_worked_hours > 12.0 THEN 
-          total_worked_hours - 12.0
-        ELSE 0
-      END AS DOUBLE_TIME,
-      
-      -- Double time night shift (assuming 10 PM to 6 AM)
-      CASE 
-        WHEN EXTRACT(HOUR FROM IN_PUNCH_1) >= 22 OR EXTRACT(HOUR FROM IN_PUNCH_1) < 6 THEN
-          total_worked_hours
-        ELSE 0
-      END AS DOUBLE_TIME_NIGHT,
-      
-      -- Double time swing shift (assuming 3 PM to 11 PM)
-      CASE 
-        WHEN EXTRACT(HOUR FROM IN_PUNCH_1) >= 15 AND EXTRACT(HOUR FROM IN_PUNCH_1) < 23 THEN
-          total_worked_hours
-        ELSE 0
-      END AS DOUBLE_TIME_SWING,
-      
-      -- On-call and pager pay (placeholder logic - adjust based on business rules)
-      0.0 AS ON_CALL,
+      -- Pager pay (placeholder - adjust based on business rules)
       0.0 AS PAGER_PAY
       
     FROM hours_calculation
@@ -288,6 +273,7 @@ BEGIN
     WORKED_SUPERVISOR,
     total_worked_hours AS HOURS_WORKED,
     hours_outside_schedule AS HOURS_WORKED_OUTSIDE_OF_SCHEDULE,
+    SCHEDULE_OUTSIDE,
     ON_CALL,
     PAGER_PAY,
     REGULAR,
