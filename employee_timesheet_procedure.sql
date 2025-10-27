@@ -4,7 +4,8 @@ CREATE OR REPLACE PROCEDURE `your_project.your_dataset.process_employee_timeshee
   output_table STRING
 )
 BEGIN
-  -- Temporary table to store intermediate results
+  -- Build dynamic SQL with proper table name substitution
+  EXECUTE IMMEDIATE FORMAT("""
   CREATE OR REPLACE TEMP TABLE temp_combined_data AS
   WITH 
   -- Parse schedule data
@@ -15,14 +16,14 @@ BEGIN
       PAY_CODE,
       AS_JOB,
       WORK_DATE,
-      SCHEDULED_START_DTTM,
-      SCHEDULED_END_DTTM,
+      CAST(SCHEDULED_START_DTTM AS DATETIME) AS SCHEDULED_START_DTTM,
+      CAST(SCHEDULED_END_DTTM AS DATETIME) AS SCHEDULED_END_DTTM,
       MANAGER_NAME,
       MODEL_NAME,
       REASON_CODE,
       -- Calculate scheduled hours
-      DATETIME_DIFF(SCHEDULED_END_DTTM, SCHEDULED_START_DTTM, MINUTE) / 60.0 AS scheduled_hours
-    FROM `{schedule_table}`
+      DATETIME_DIFF(CAST(SCHEDULED_END_DTTM AS DATETIME), CAST(SCHEDULED_START_DTTM AS DATETIME), MINUTE) / 60.0 AS scheduled_hours
+    FROM `%s`
   ),
   
   -- Parse timesheet data and create punch records
@@ -34,36 +35,36 @@ BEGIN
       WORK_DATE,
       LOCATION,
       COST_CENTER,
-      START_DTTM,
-      END_DTTM,
+      CAST(START_DTTM AS DATETIME) AS START_DTTM,
+      CAST(END_DTTM AS DATETIME) AS END_DTTM,
       COMMENTS,
       MANAGER_NAME,
       MODEL_NAME,
       REASON_CODE,
       -- Calculate worked hours (handling overnight shifts)
       CASE 
-        WHEN DATE(END_DTTM) > DATE(START_DTTM) THEN
+        WHEN DATE(CAST(END_DTTM AS DATETIME)) > DATE(CAST(START_DTTM AS DATETIME)) THEN
           -- Overnight shift: calculate hours properly
           DATETIME_DIFF(
-            DATETIME_ADD(DATETIME(DATE(START_DTTM), TIME(23, 59, 59)), INTERVAL 1 MINUTE),
-            START_DTTM, 
+            DATETIME_ADD(DATETIME(DATE(CAST(START_DTTM AS DATETIME)), TIME(23, 59, 59)), INTERVAL 1 MINUTE),
+            CAST(START_DTTM AS DATETIME), 
             MINUTE
           ) / 60.0 +
           DATETIME_DIFF(
-            END_DTTM,
-            DATETIME(DATE(END_DTTM), TIME(0, 0, 0)),
+            CAST(END_DTTM AS DATETIME),
+            DATETIME(DATE(CAST(END_DTTM AS DATETIME)), TIME(0, 0, 0)),
             MINUTE
           ) / 60.0
         ELSE
-          DATETIME_DIFF(END_DTTM, START_DTTM, MINUTE) / 60.0
+          DATETIME_DIFF(CAST(END_DTTM AS DATETIME), CAST(START_DTTM AS DATETIME), MINUTE) / 60.0
       END AS worked_hours,
       
       -- Row number for punch sequencing
       ROW_NUMBER() OVER (
         PARTITION BY EMPLOYEE_ID, WORK_DATE 
-        ORDER BY START_DTTM
+        ORDER BY CAST(START_DTTM AS DATETIME)
       ) AS punch_sequence
-    FROM `{timesheet_table}`
+    FROM `%s`
   ),
   
   -- Aggregate timesheet data by employee and date
@@ -79,44 +80,44 @@ BEGIN
       SUM(worked_hours) AS total_worked_hours,
       
       -- Punch data (up to 8 punches)
-      MAX(CASE WHEN punch_sequence = 1 THEN START_DTTM END) AS IN_PUNCH_1,
+      CAST(MAX(CASE WHEN punch_sequence = 1 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_1,
       MAX(CASE WHEN punch_sequence = 1 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_1,
-      MAX(CASE WHEN punch_sequence = 1 THEN END_DTTM END) AS OUT_PUNCH_1,
+      CAST(MAX(CASE WHEN punch_sequence = 1 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_1,
       MAX(CASE WHEN punch_sequence = 1 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_1,
       
-      MAX(CASE WHEN punch_sequence = 2 THEN START_DTTM END) AS IN_PUNCH_2,
+      CAST(MAX(CASE WHEN punch_sequence = 2 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_2,
       MAX(CASE WHEN punch_sequence = 2 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_2,
-      MAX(CASE WHEN punch_sequence = 2 THEN END_DTTM END) AS OUT_PUNCH_2,
+      CAST(MAX(CASE WHEN punch_sequence = 2 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_2,
       MAX(CASE WHEN punch_sequence = 2 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_2,
       
-      MAX(CASE WHEN punch_sequence = 3 THEN START_DTTM END) AS IN_PUNCH_3,
+      CAST(MAX(CASE WHEN punch_sequence = 3 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_3,
       MAX(CASE WHEN punch_sequence = 3 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_3,
-      MAX(CASE WHEN punch_sequence = 3 THEN END_DTTM END) AS OUT_PUNCH_3,
+      CAST(MAX(CASE WHEN punch_sequence = 3 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_3,
       MAX(CASE WHEN punch_sequence = 3 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_3,
       
-      MAX(CASE WHEN punch_sequence = 4 THEN START_DTTM END) AS IN_PUNCH_4,
+      CAST(MAX(CASE WHEN punch_sequence = 4 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_4,
       MAX(CASE WHEN punch_sequence = 4 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_4,
-      MAX(CASE WHEN punch_sequence = 4 THEN END_DTTM END) AS OUT_PUNCH_4,
+      CAST(MAX(CASE WHEN punch_sequence = 4 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_4,
       MAX(CASE WHEN punch_sequence = 4 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_4,
       
-      MAX(CASE WHEN punch_sequence = 5 THEN START_DTTM END) AS IN_PUNCH_5,
+      CAST(MAX(CASE WHEN punch_sequence = 5 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_5,
       MAX(CASE WHEN punch_sequence = 5 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_5,
-      MAX(CASE WHEN punch_sequence = 5 THEN END_DTTM END) AS OUT_PUNCH_5,
+      CAST(MAX(CASE WHEN punch_sequence = 5 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_5,
       MAX(CASE WHEN punch_sequence = 5 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_5,
       
-      MAX(CASE WHEN punch_sequence = 6 THEN START_DTTM END) AS IN_PUNCH_6,
+      CAST(MAX(CASE WHEN punch_sequence = 6 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_6,
       MAX(CASE WHEN punch_sequence = 6 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_6,
-      MAX(CASE WHEN punch_sequence = 6 THEN END_DTTM END) AS OUT_PUNCH_6,
+      CAST(MAX(CASE WHEN punch_sequence = 6 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_6,
       MAX(CASE WHEN punch_sequence = 6 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_6,
       
-      MAX(CASE WHEN punch_sequence = 7 THEN START_DTTM END) AS IN_PUNCH_7,
+      CAST(MAX(CASE WHEN punch_sequence = 7 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_7,
       MAX(CASE WHEN punch_sequence = 7 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_7,
-      MAX(CASE WHEN punch_sequence = 7 THEN END_DTTM END) AS OUT_PUNCH_7,
+      CAST(MAX(CASE WHEN punch_sequence = 7 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_7,
       MAX(CASE WHEN punch_sequence = 7 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_7,
       
-      MAX(CASE WHEN punch_sequence = 8 THEN START_DTTM END) AS IN_PUNCH_8,
+      CAST(MAX(CASE WHEN punch_sequence = 8 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_8,
       MAX(CASE WHEN punch_sequence = 8 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_8,
-      MAX(CASE WHEN punch_sequence = 8 THEN END_DTTM END) AS OUT_PUNCH_8,
+      CAST(MAX(CASE WHEN punch_sequence = 8 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_8,
       MAX(CASE WHEN punch_sequence = 8 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_8
       
     FROM timesheet_parsed
@@ -136,7 +137,7 @@ BEGIN
       
       -- Calculate hours worked within scheduled time
       CASE 
-        WHEN t.IN_PUNCH_1 IS NOT NULL AND t.OUT_PUNCH_1 IS NOT NULL THEN
+        WHEN t.IN_PUNCH_1 IS NOT NULL AND t.OUT_PUNCH_1 IS NOT NULL AND s.SCHEDULED_START_DTTM IS NOT NULL THEN
           GREATEST(0, 
             LEAST(
               DATETIME_DIFF(t.OUT_PUNCH_1, t.IN_PUNCH_1, MINUTE) / 60.0,
@@ -152,7 +153,7 @@ BEGIN
       
       -- Calculate hours worked outside of schedule
       CASE 
-        WHEN t.IN_PUNCH_1 IS NOT NULL AND t.OUT_PUNCH_1 IS NOT NULL THEN
+        WHEN t.IN_PUNCH_1 IS NOT NULL AND t.OUT_PUNCH_1 IS NOT NULL AND s.SCHEDULED_START_DTTM IS NOT NULL THEN
           t.total_worked_hours - 
           GREATEST(0, 
             LEAST(
@@ -266,7 +267,8 @@ BEGIN
     IN_PUNCH_COMMENTS_NOTES_8,
     OUT_PUNCH_8,
     OUT_PUNCH_COMMENTS_NOTES_8
-  FROM final_calculation;
+  FROM final_calculation
+  """, schedule_table, timesheet_table);
   
   -- Insert results into output table
   EXECUTE IMMEDIATE FORMAT("""
