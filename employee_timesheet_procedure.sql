@@ -73,10 +73,10 @@ BEGIN
       EMPLOYEE_NAME,
       EMPLOYEE_ID,
       WORK_DATE,
-      LOCATION AS WORKED_LOCATION,
-      COST_CENTER,
-      PAY_CODE AS WORKED_PROJECT,
-      MANAGER_NAME AS WORKED_SUPERVISOR,
+      MAX(LOCATION) AS WORKED_LOCATION,
+      MAX(COST_CENTER) AS COST_CENTER,
+      MAX(PAY_CODE) AS WORKED_PROJECT,
+      MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
       SUM(worked_hours) AS total_worked_hours,
       
       -- Punch data (up to 8 punches)
@@ -122,8 +122,7 @@ BEGIN
       
     FROM timesheet_parsed
     GROUP BY 
-      EMPLOYEE_NAME, EMPLOYEE_ID, WORK_DATE, LOCATION, COST_CENTER, 
-      PAY_CODE, MANAGER_NAME
+      EMPLOYEE_NAME, EMPLOYEE_ID, WORK_DATE
   ),
   
   -- Calculate hours worked inside and outside of schedule
