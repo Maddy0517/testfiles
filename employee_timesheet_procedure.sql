@@ -154,6 +154,7 @@ BEGIN
       s.SCHEDULED_START_DTTM,
       s.SCHEDULED_END_DTTM,
       s.SCHEDULE,
+      s.PAY_CODE,
       
       -- Calculate hours worked within scheduled time
       CASE 
