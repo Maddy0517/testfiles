@@ -67,6 +67,17 @@ BEGIN
     FROM `%s`
   ),
   
+  -- Create a comprehensive punch sequence across all timesheet entries for each employee/date
+  timesheet_with_global_sequence AS (
+    SELECT 
+      *,
+      ROW_NUMBER() OVER (
+        PARTITION BY EMPLOYEE_ID, WORK_DATE 
+        ORDER BY START_DTTM
+      ) AS global_punch_sequence
+    FROM timesheet_parsed
+  ),
+  
   -- Aggregate timesheet data by employee and date
   timesheet_aggregated AS (
     SELECT 
@@ -79,48 +90,48 @@ BEGIN
       MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
       SUM(worked_hours) AS total_worked_hours,
       
-      -- Punch data (up to 8 punches)
-      CAST(MAX(CASE WHEN punch_sequence = 1 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_1,
-      MAX(CASE WHEN punch_sequence = 1 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_1,
-      CAST(MAX(CASE WHEN punch_sequence = 1 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_1,
-      MAX(CASE WHEN punch_sequence = 1 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_1,
+      -- Punch data (up to 8 punches) - using global sequence
+      CAST(MAX(CASE WHEN global_punch_sequence = 1 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_1,
+      MAX(CASE WHEN global_punch_sequence = 1 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_1,
+      CAST(MAX(CASE WHEN global_punch_sequence = 1 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_1,
+      MAX(CASE WHEN global_punch_sequence = 1 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_1,
       
-      CAST(MAX(CASE WHEN punch_sequence = 2 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_2,
-      MAX(CASE WHEN punch_sequence = 2 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_2,
-      CAST(MAX(CASE WHEN punch_sequence = 2 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_2,
-      MAX(CASE WHEN punch_sequence = 2 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_2,
+      CAST(MAX(CASE WHEN global_punch_sequence = 2 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_2,
+      MAX(CASE WHEN global_punch_sequence = 2 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_2,
+      CAST(MAX(CASE WHEN global_punch_sequence = 2 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_2,
+      MAX(CASE WHEN global_punch_sequence = 2 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_2,
       
-      CAST(MAX(CASE WHEN punch_sequence = 3 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_3,
-      MAX(CASE WHEN punch_sequence = 3 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_3,
-      CAST(MAX(CASE WHEN punch_sequence = 3 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_3,
-      MAX(CASE WHEN punch_sequence = 3 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_3,
+      CAST(MAX(CASE WHEN global_punch_sequence = 3 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_3,
+      MAX(CASE WHEN global_punch_sequence = 3 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_3,
+      CAST(MAX(CASE WHEN global_punch_sequence = 3 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_3,
+      MAX(CASE WHEN global_punch_sequence = 3 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_3,
       
-      CAST(MAX(CASE WHEN punch_sequence = 4 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_4,
-      MAX(CASE WHEN punch_sequence = 4 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_4,
-      CAST(MAX(CASE WHEN punch_sequence = 4 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_4,
-      MAX(CASE WHEN punch_sequence = 4 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_4,
+      CAST(MAX(CASE WHEN global_punch_sequence = 4 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_4,
+      MAX(CASE WHEN global_punch_sequence = 4 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_4,
+      CAST(MAX(CASE WHEN global_punch_sequence = 4 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_4,
+      MAX(CASE WHEN global_punch_sequence = 4 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_4,
       
-      CAST(MAX(CASE WHEN punch_sequence = 5 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_5,
-      MAX(CASE WHEN punch_sequence = 5 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_5,
-      CAST(MAX(CASE WHEN punch_sequence = 5 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_5,
-      MAX(CASE WHEN punch_sequence = 5 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_5,
+      CAST(MAX(CASE WHEN global_punch_sequence = 5 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_5,
+      MAX(CASE WHEN global_punch_sequence = 5 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_5,
+      CAST(MAX(CASE WHEN global_punch_sequence = 5 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_5,
+      MAX(CASE WHEN global_punch_sequence = 5 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_5,
       
-      CAST(MAX(CASE WHEN punch_sequence = 6 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_6,
-      MAX(CASE WHEN punch_sequence = 6 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_6,
-      CAST(MAX(CASE WHEN punch_sequence = 6 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_6,
-      MAX(CASE WHEN punch_sequence = 6 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_6,
+      CAST(MAX(CASE WHEN global_punch_sequence = 6 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_6,
+      MAX(CASE WHEN global_punch_sequence = 6 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_6,
+      CAST(MAX(CASE WHEN global_punch_sequence = 6 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_6,
+      MAX(CASE WHEN global_punch_sequence = 6 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_6,
       
-      CAST(MAX(CASE WHEN punch_sequence = 7 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_7,
-      MAX(CASE WHEN punch_sequence = 7 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_7,
-      CAST(MAX(CASE WHEN punch_sequence = 7 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_7,
-      MAX(CASE WHEN punch_sequence = 7 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_7,
+      CAST(MAX(CASE WHEN global_punch_sequence = 7 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_7,
+      MAX(CASE WHEN global_punch_sequence = 7 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_7,
+      CAST(MAX(CASE WHEN global_punch_sequence = 7 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_7,
+      MAX(CASE WHEN global_punch_sequence = 7 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_7,
       
-      CAST(MAX(CASE WHEN punch_sequence = 8 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_8,
-      MAX(CASE WHEN punch_sequence = 8 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_8,
-      CAST(MAX(CASE WHEN punch_sequence = 8 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_8,
-      MAX(CASE WHEN punch_sequence = 8 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_8
+      CAST(MAX(CASE WHEN global_punch_sequence = 8 THEN START_DTTM END) AS DATETIME) AS IN_PUNCH_8,
+      MAX(CASE WHEN global_punch_sequence = 8 THEN COMMENTS END) AS IN_PUNCH_COMMENTS_NOTES_8,
+      CAST(MAX(CASE WHEN global_punch_sequence = 8 THEN END_DTTM END) AS DATETIME) AS OUT_PUNCH_8,
+      MAX(CASE WHEN global_punch_sequence = 8 THEN COMMENTS END) AS OUT_PUNCH_COMMENTS_NOTES_8
       
-    FROM timesheet_parsed
+    FROM timesheet_with_global_sequence
     GROUP BY 
       EMPLOYEE_NAME, EMPLOYEE_ID, WORK_DATE
   ),
