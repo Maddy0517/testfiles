@@ -99,6 +99,7 @@ BEGIN
       NULL AS WORKED_PROJECT,
       MAX(MANAGER_NAME) AS WORKED_SUPERVISOR,
       -- Calculate hours by PAY_CODE from timesheet data
+      SUM(CASE WHEN PAY_CODE = 'SCHEDULE_OUTSIDE' THEN worked_hours ELSE 0 END) AS SCHEDULE_OUTSIDE_HOURS,
       SUM(CASE WHEN PAY_CODE = 'ON_CALL' THEN worked_hours ELSE 0 END) AS ON_CALL_HOURS,
       SUM(CASE WHEN PAY_CODE = 'REG' THEN worked_hours ELSE 0 END) AS REGULAR_HOURS,
       SUM(CASE WHEN PAY_CODE = 'OT_15' THEN worked_hours ELSE 0 END) AS OVERTIME_HOURS,
@@ -178,60 +179,8 @@ BEGIN
         ELSE 0
       END AS hours_within_schedule,
       
-      -- Calculate hours worked outside of schedule (considering all punches)
-      CASE 
-        WHEN s.SCHEDULED_START_DTTM IS NOT NULL AND s.SCHEDULED_END_DTTM IS NOT NULL THEN
-          -- Calculate outside hours for all punch pairs
-          COALESCE(
-            -- Punch 1 outside hours
-            CASE 
-              WHEN t.IN_PUNCH_1 IS NOT NULL AND t.OUT_PUNCH_1 IS NOT NULL THEN
-                CASE WHEN t.IN_PUNCH_1 < s.SCHEDULED_START_DTTM THEN
-                  DATETIME_DIFF(LEAST(t.OUT_PUNCH_1, s.SCHEDULED_START_DTTM), t.IN_PUNCH_1, MINUTE) / 60.0
-                ELSE 0 END +
-                CASE WHEN t.OUT_PUNCH_1 > s.SCHEDULED_END_DTTM THEN
-                  DATETIME_DIFF(t.OUT_PUNCH_1, GREATEST(t.IN_PUNCH_1, s.SCHEDULED_END_DTTM), MINUTE) / 60.0
-                ELSE 0 END
-              ELSE 0
-            END, 0) +
-          COALESCE(
-            -- Punch 2 outside hours
-            CASE 
-              WHEN t.IN_PUNCH_2 IS NOT NULL AND t.OUT_PUNCH_2 IS NOT NULL THEN
-                CASE WHEN t.IN_PUNCH_2 < s.SCHEDULED_START_DTTM THEN
-                  DATETIME_DIFF(LEAST(t.OUT_PUNCH_2, s.SCHEDULED_START_DTTM), t.IN_PUNCH_2, MINUTE) / 60.0
-                ELSE 0 END +
-                CASE WHEN t.OUT_PUNCH_2 > s.SCHEDULED_END_DTTM THEN
-                  DATETIME_DIFF(t.OUT_PUNCH_2, GREATEST(t.IN_PUNCH_2, s.SCHEDULED_END_DTTM), MINUTE) / 60.0
-                ELSE 0 END
-              ELSE 0
-            END, 0) +
-          COALESCE(
-            -- Punch 3 outside hours
-            CASE 
-              WHEN t.IN_PUNCH_3 IS NOT NULL AND t.OUT_PUNCH_3 IS NOT NULL THEN
-                CASE WHEN t.IN_PUNCH_3 < s.SCHEDULED_START_DTTM THEN
-                  DATETIME_DIFF(LEAST(t.OUT_PUNCH_3, s.SCHEDULED_START_DTTM), t.IN_PUNCH_3, MINUTE) / 60.0
-                ELSE 0 END +
-                CASE WHEN t.OUT_PUNCH_3 > s.SCHEDULED_END_DTTM THEN
-                  DATETIME_DIFF(t.OUT_PUNCH_3, GREATEST(t.IN_PUNCH_3, s.SCHEDULED_END_DTTM), MINUTE) / 60.0
-                ELSE 0 END
-              ELSE 0
-            END, 0) +
-          COALESCE(
-            -- Punch 4 outside hours
-            CASE 
-              WHEN t.IN_PUNCH_4 IS NOT NULL AND t.OUT_PUNCH_4 IS NOT NULL THEN
-                CASE WHEN t.IN_PUNCH_4 < s.SCHEDULED_START_DTTM THEN
-                  DATETIME_DIFF(LEAST(t.OUT_PUNCH_4, s.SCHEDULED_START_DTTM), t.IN_PUNCH_4, MINUTE) / 60.0
-                ELSE 0 END +
-                CASE WHEN t.OUT_PUNCH_4 > s.SCHEDULED_END_DTTM THEN
-                  DATETIME_DIFF(t.OUT_PUNCH_4, GREATEST(t.IN_PUNCH_4, s.SCHEDULED_END_DTTM), MINUTE) / 60.0
-                ELSE 0 END
-              ELSE 0
-            END, 0)
-        ELSE 0
-      END AS hours_outside_schedule
+      -- Calculate hours worked outside of schedule based on PAY_CODE
+      t.SCHEDULE_OUTSIDE_HOURS AS hours_outside_schedule
       
     FROM timesheet_aggregated t
     LEFT JOIN schedule_parsed s
