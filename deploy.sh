@@ -7,7 +7,7 @@
 FUNCTION_NAME="pgp-gcs-processor"
 REGION="us-central1"
 RUNTIME="java11"
-ENTRY_POINT="com.example.pgp.PgpGcsFunction"
+ENTRY_POINT="com.example.pgp.PgpGcsDecryptionFunction"
 MEMORY="512MB"
 TIMEOUT="540s"
 MAX_INSTANCES="10"

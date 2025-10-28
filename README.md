@@ -104,17 +104,10 @@ gcloud functions deploy pgp-gcs-processor \
 
 ### Request Format
 
-Send a POST request to the function URL with the following JSON payload:
+Send a POST request to the function URL with query parameters (following your existing project pattern):
 
-```json
-{
-    "Src_Bucket": "xyz",
-    "Tgt_Bucket": "xyz",
-    "Src_File": "gcsfile path",
-    "Gcs_ProjectID": "project_id",
-    "passphrase": "pqaddddzxx",
-    "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
-}
+```
+POST https://your-function-url?Src_Bucket=xyz&Tgt_Bucket=xyz&Src_File=gcsfile%20path&Gcs_ProjectID=project_id&passphrase=pqaddddzxx&Private_encrypt_Key=PULSE_BYOD_FILE_ENCRYPTION_KEY
 ```
 
 ### Parameters
@@ -130,16 +123,33 @@ Send a POST request to the function URL with the following JSON payload:
 
 ```bash
 curl -X POST \
-  https://us-central1-project_id.cloudfunctions.net/pgp-gcs-processor \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Src_Bucket": "xyz",
-    "Tgt_Bucket": "xyz",
-    "Src_File": "gcsfile path",
-    "Gcs_ProjectID": "project_id",
-    "passphrase": "pqaddddzxx",
-    "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
-  }'
+  "https://us-central1-project_id.cloudfunctions.net/pgp-gcs-processor?Src_Bucket=xyz&Tgt_Bucket=xyz&Src_File=gcsfile%20path&Gcs_ProjectID=project_id&passphrase=pqaddddzxx&Private_encrypt_Key=PULSE_BYOD_FILE_ENCRYPTION_KEY" \
+  -H "Content-Type: application/json"
+```
+
+### Calling from Airflow/Cloud Composer
+
+Since you're calling this from Airflow DAGs, you can use the `SimpleHttpOperator` or `HttpOperator`:
+
+```python
+from airflow.providers.http.operators.http import SimpleHttpOperator
+
+pgp_decrypt_task = SimpleHttpOperator(
+    task_id='decrypt_pgp_file',
+    http_conn_id='gcp_cloud_function_conn',
+    endpoint='pgp-gcs-processor',
+    method='POST',
+    data={
+        'Src_Bucket': 'xyz',
+        'Tgt_Bucket': 'xyz', 
+        'Src_File': 'gcsfile path',
+        'Gcs_ProjectID': 'project_id',
+        'passphrase': 'pqaddddzxx',
+        'Private_encrypt_Key': 'PULSE_BYOD_FILE_ENCRYPTION_KEY'
+    },
+    headers={'Content-Type': 'application/json'},
+    dag=dag
+)
 ```
 
 ### Response Format

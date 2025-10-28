@@ -9,7 +9,7 @@ metadata:
     app: pgp-processor
 spec:
   runtime: java11
-  entryPoint: com.example.pgp.PgpGcsFunction
+  entryPoint: com.example.pgp.PgpGcsDecryptionFunction
   httpsTrigger: {}
   availableMemoryMb: 512
   timeout: 540s
