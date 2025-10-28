@@ -21,22 +21,20 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
 
-/**
- * Google Cloud Function for PGP file decryption and encryption.
- * 
- * This function:
- * 1. Downloads an encrypted file from Google Cloud Storage
- * 2. Decrypts it using PGP
- * 3. Encrypts it with a private key from Secret Manager
- * 4. Uploads the encrypted file back to Google Cloud Storage
- */
+    /**
+     * Google Cloud Function for PGP file decryption.
+     * 
+     * This function:
+     * 1. Downloads an encrypted PGP file from Google Cloud Storage
+     * 2. Decrypts it using PGP with a private key from Secret Manager
+     * 3. Uploads the decrypted file back to Google Cloud Storage
+     */
 public class PgpCloudFunction implements HttpFunction {
     
     private static final Logger logger = Logger.getLogger(PgpCloudFunction.class.getName());
     private static final Gson gson = new Gson();
     
     private final PgpFileDecryptor decryptor = new PgpFileDecryptor();
-    private final PgpFileEncryptor encryptor = new PgpFileEncryptor();
 
     /**
      * Request payload structure
@@ -184,7 +182,7 @@ public class PgpCloudFunction implements HttpFunction {
         logger.info("Retrieving private key from Secret Manager: " + request.Private_encrypt_Key);
         String privateKeyContent = getSecretValue(request.Gcs_ProjectID, request.Private_encrypt_Key);
         
-        // Step 1: Decrypt the file
+        // Decrypt the file
         logger.info("Decrypting file...");
         ByteArrayOutputStream decryptedOutput = new ByteArrayOutputStream();
         
@@ -198,33 +196,16 @@ public class PgpCloudFunction implements HttpFunction {
         byte[] decryptedBytes = decryptedOutput.toByteArray();
         logger.info("File decrypted successfully. Size: " + decryptedBytes.length + " bytes");
         
-        // Step 2: Encrypt the decrypted file with the same private key
-        logger.info("Encrypting file...");
-        ByteArrayOutputStream encryptedOutput = new ByteArrayOutputStream();
-        
-        try (ByteArrayInputStream decryptedInput = new ByteArrayInputStream(decryptedBytes);
-             ByteArrayInputStream privateKeyInput = new ByteArrayInputStream(privateKeyContent.getBytes(StandardCharsets.UTF_8))) {
-            
-            // Extract filename without path
-            String fileName = extractFileName(request.Src_File);
-            
-            encryptor.encryptFile(decryptedInput, encryptedOutput, privateKeyInput, 
-                                request.passphrase.toCharArray(), fileName, true);
-        }
-        
-        byte[] reEncryptedBytes = encryptedOutput.toByteArray();
-        logger.info("File encrypted successfully. Size: " + reEncryptedBytes.length + " bytes");
-        
-        // Step 3: Upload the encrypted file to target bucket
+        // Upload the decrypted file to target bucket
         String targetFileName = generateTargetFileName(request.Src_File);
-        logger.info("Uploading encrypted file to GCS: " + request.Tgt_Bucket + "/" + targetFileName);
+        logger.info("Uploading decrypted file to GCS: " + request.Tgt_Bucket + "/" + targetFileName);
         
         BlobId targetBlobId = BlobId.of(request.Tgt_Bucket, targetFileName);
         BlobInfo targetBlobInfo = BlobInfo.newBuilder(targetBlobId)
             .setContentType("application/octet-stream")
             .build();
         
-        storage.create(targetBlobInfo, reEncryptedBytes);
+        storage.create(targetBlobInfo, decryptedBytes);
         
         logger.info("File processing completed successfully: " + targetFileName);
         return targetFileName;
