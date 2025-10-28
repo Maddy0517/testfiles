@@ -12,7 +12,6 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,20 +20,15 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
 
-    /**
-     * Google Cloud Function for PGP file decryption.
-     * 
-     * This function:
-     * 1. Downloads an encrypted PGP file from Google Cloud Storage
-     * 2. Decrypts it using PGP with a private key from Secret Manager
-     * 3. Uploads the decrypted file back to Google Cloud Storage
-     */
+/**
+ * Simple Google Cloud Function for PGP file encryption.
+ */
 public class PgpCloudFunction implements HttpFunction {
     
     private static final Logger logger = Logger.getLogger(PgpCloudFunction.class.getName());
     private static final Gson gson = new Gson();
     
-    private final PgpFileDecryptor decryptor = new PgpFileDecryptor();
+    private final PgpFileEncryptor encryptor = new PgpFileEncryptor();
 
     /**
      * Request payload structure
@@ -67,12 +61,6 @@ public class PgpCloudFunction implements HttpFunction {
             this.message = message;
             this.processedFile = processedFile;
         }
-        
-        public PgpResponse(boolean success, String message, String error) {
-            this.success = success;
-            this.message = message;
-            this.error = error;
-        }
     }
 
     @Override
@@ -103,7 +91,7 @@ public class PgpCloudFunction implements HttpFunction {
             String processedFileName = processFile(pgpRequest);
             
             // Send success response
-            PgpResponse pgpResponse = new PgpResponse(true, "File processed successfully", processedFileName);
+            PgpResponse pgpResponse = new PgpResponse(true, "File encrypted successfully", processedFileName);
             sendResponse(response, 200, pgpResponse);
             
         } catch (IllegalArgumentException e) {
@@ -117,18 +105,14 @@ public class PgpCloudFunction implements HttpFunction {
     }
 
     private PgpRequest parseRequest(HttpRequest request) throws IOException {
-        try {
-            String requestBody = request.getReader().lines()
-                .reduce("", (accumulator, actual) -> accumulator + actual);
-            
-            if (requestBody.trim().isEmpty()) {
-                throw new IllegalArgumentException("Request body is empty");
-            }
-            
-            return gson.fromJson(requestBody, PgpRequest.class);
-        } catch (JsonSyntaxException e) {
-            throw new IllegalArgumentException("Invalid JSON in request body: " + e.getMessage());
+        String requestBody = request.getReader().lines()
+            .reduce("", (accumulator, actual) -> accumulator + actual);
+        
+        if (requestBody.trim().isEmpty()) {
+            throw new IllegalArgumentException("Request body is empty");
         }
+        
+        return gson.fromJson(requestBody, PgpRequest.class);
     }
 
     private void validateRequest(PgpRequest request) {
@@ -168,7 +152,7 @@ public class PgpCloudFunction implements HttpFunction {
             .build()
             .getService();
 
-        // Download the encrypted file from source bucket
+        // Download the file from source bucket
         logger.info("Downloading file from GCS: " + request.Src_Bucket + "/" + request.Src_File);
         Blob sourceBlob = storage.get(BlobId.of(request.Src_Bucket, request.Src_File));
         
@@ -176,36 +160,37 @@ public class PgpCloudFunction implements HttpFunction {
             throw new IllegalArgumentException("Source file not found: " + request.Src_File);
         }
 
-        byte[] encryptedFileBytes = sourceBlob.getContent();
+        byte[] fileBytes = sourceBlob.getContent();
         
         // Get the private key from Secret Manager
         logger.info("Retrieving private key from Secret Manager: " + request.Private_encrypt_Key);
         String privateKeyContent = getSecretValue(request.Gcs_ProjectID, request.Private_encrypt_Key);
         
-        // Decrypt the file
-        logger.info("Decrypting file...");
-        ByteArrayOutputStream decryptedOutput = new ByteArrayOutputStream();
+        // Encrypt the file
+        logger.info("Encrypting file...");
+        ByteArrayOutputStream encryptedOutput = new ByteArrayOutputStream();
         
-        try (ByteArrayInputStream encryptedInput = new ByteArrayInputStream(encryptedFileBytes);
+        try (ByteArrayInputStream fileInput = new ByteArrayInputStream(fileBytes);
              ByteArrayInputStream privateKeyInput = new ByteArrayInputStream(privateKeyContent.getBytes(StandardCharsets.UTF_8))) {
             
-            decryptor.decryptFile(encryptedInput, privateKeyInput, 
-                                request.passphrase.toCharArray(), decryptedOutput);
+            String fileName = extractFileName(request.Src_File);
+            encryptor.encryptFile(fileInput, encryptedOutput, privateKeyInput, 
+                                request.passphrase.toCharArray(), fileName, true);
         }
         
-        byte[] decryptedBytes = decryptedOutput.toByteArray();
-        logger.info("File decrypted successfully. Size: " + decryptedBytes.length + " bytes");
+        byte[] encryptedBytes = encryptedOutput.toByteArray();
+        logger.info("File encrypted successfully. Size: " + encryptedBytes.length + " bytes");
         
-        // Upload the decrypted file to target bucket
+        // Upload the encrypted file to target bucket
         String targetFileName = generateTargetFileName(request.Src_File);
-        logger.info("Uploading decrypted file to GCS: " + request.Tgt_Bucket + "/" + targetFileName);
+        logger.info("Uploading encrypted file to GCS: " + request.Tgt_Bucket + "/" + targetFileName);
         
         BlobId targetBlobId = BlobId.of(request.Tgt_Bucket, targetFileName);
         BlobInfo targetBlobInfo = BlobInfo.newBuilder(targetBlobId)
-            .setContentType(determineContentType(targetFileName))
+            .setContentType("application/octet-stream")
             .build();
         
-        storage.create(targetBlobInfo, decryptedBytes);
+        storage.create(targetBlobInfo, encryptedBytes);
         
         logger.info("File processing completed successfully: " + targetFileName);
         return targetFileName;
@@ -224,7 +209,6 @@ public class PgpCloudFunction implements HttpFunction {
             return "file";
         }
         
-        // Remove path separators and get just the filename
         String fileName = filePath;
         int lastSlash = Math.max(fileName.lastIndexOf('/'), fileName.lastIndexOf('\\'));
         if (lastSlash >= 0) {
@@ -236,32 +220,7 @@ public class PgpCloudFunction implements HttpFunction {
 
     private String generateTargetFileName(String sourceFileName) {
         String baseName = extractFileName(sourceFileName);
-        
-        // Remove .pgp extension if present to get the original filename
-        if (baseName.toLowerCase().endsWith(".pgp")) {
-            baseName = baseName.substring(0, baseName.length() - 4);
-        }
-        
-        // Add decrypted suffix to indicate this is the decrypted version
-        return baseName + "_decrypted";
-    }
-
-    private String determineContentType(String fileName) {
-        String lowerFileName = fileName.toLowerCase();
-        
-        if (lowerFileName.endsWith(".csv")) {
-            return "text/csv";
-        } else if (lowerFileName.endsWith(".txt")) {
-            return "text/plain";
-        } else if (lowerFileName.endsWith(".json")) {
-            return "application/json";
-        } else if (lowerFileName.endsWith(".xml")) {
-            return "application/xml";
-        } else if (lowerFileName.endsWith(".pdf")) {
-            return "application/pdf";
-        } else {
-            return "application/octet-stream";
-        }
+        return baseName + ".pgp";
     }
 
     private void sendResponse(HttpResponse response, int statusCode, PgpResponse pgpResponse) throws IOException {
@@ -274,7 +233,8 @@ public class PgpCloudFunction implements HttpFunction {
     }
 
     private void sendErrorResponse(HttpResponse response, int statusCode, String errorMessage) throws IOException {
-        PgpResponse errorResponse = new PgpResponse(false, "Error", errorMessage);
+        PgpResponse errorResponse = new PgpResponse(false, errorMessage);
+        errorResponse.error = errorMessage;
         sendResponse(response, statusCode, errorResponse);
     }
 }
