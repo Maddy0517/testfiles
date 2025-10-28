@@ -1,0 +1,21 @@
+# Google Cloud Function configuration
+# This file can be used with gcloud functions deploy --source=. --config=function.yaml
+
+specVersion: v1alpha1
+kind: Function
+metadata:
+  name: pgp-gcs-processor
+  labels:
+    app: pgp-processor
+spec:
+  runtime: java11
+  entryPoint: com.example.pgp.PgpGcsFunction
+  httpsTrigger: {}
+  availableMemoryMb: 512
+  timeout: 540s
+  maxInstances: 10
+  environmentVariables:
+    JAVA_TOOL_OPTIONS: "-XX:+UseG1GC -XX:MaxRAMPercentage=75"
+  serviceAccountEmail: ""  # Optional: specify service account
+  ingressSettings: ALLOW_ALL
+  availableCpu: "1"
