@@ -1,0 +1,19 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore
+
+.gcloudignore
+.git
+.gitignore
+README.md
+deploy.sh
+example_airflow_dag.py
+*.md
+*.py
+code.py
+example.txt
+example1.txt
+.DS_Store
+target/
+.idea/
+*.iml
+.vscode/
