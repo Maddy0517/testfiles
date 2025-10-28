@@ -90,11 +90,32 @@ public class GcsPgpDecryptFunction implements HttpFunction {
     }
 
     private static String deriveOutputName(String srcFileName) {
-        // strip common pgp extensions, else append .decrypted
-        String lower = srcFileName.toLowerCase();
-        if (lower.endsWith(".pgp")) return srcFileName.substring(0, srcFileName.length() - 4);
-        if (lower.endsWith(".gpg")) return srcFileName.substring(0, srcFileName.length() - 4);
-        if (lower.endsWith(".asc")) return srcFileName.substring(0, srcFileName.length() - 4);
-        return srcFileName + ".decrypted";
+        // Goal: original base name + "_decrypted" before original extension.
+        // Example: xyz_20251028.csv.pgp -> xyz_20251028_decrypted.csv
+
+        // Preserve path prefix if present
+        int lastSlash = srcFileName.lastIndexOf('/') + 1; // 0 if none, else index after '/'
+        String dirPrefix = lastSlash > 0 ? srcFileName.substring(0, lastSlash) : "";
+        String fileNameOnly = lastSlash > 0 ? srcFileName.substring(lastSlash) : srcFileName;
+
+        // Strip PGP layer extension first
+        String lower = fileNameOnly.toLowerCase();
+        if (lower.endsWith(".pgp") || lower.endsWith(".gpg") || lower.endsWith(".asc")) {
+            fileNameOnly = fileNameOnly.substring(0, fileNameOnly.lastIndexOf('.'));
+        }
+
+        // Insert _decrypted before the original (now exposed) extension if any
+        int lastDot = fileNameOnly.lastIndexOf('.');
+        String outputName;
+        if (lastDot > 0) {
+            String base = fileNameOnly.substring(0, lastDot);
+            String ext = fileNameOnly.substring(lastDot); // includes dot
+            outputName = base + "_decrypted" + ext;
+        } else {
+            // No extension; just append suffix
+            outputName = fileNameOnly + "_decrypted";
+        }
+
+        return dirPrefix + outputName;
     }
 }
