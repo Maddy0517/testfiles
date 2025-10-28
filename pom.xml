@@ -106,7 +106,7 @@
                 <artifactId>function-maven-plugin</artifactId>
                 <version>0.10.1</version>
                 <configuration>
-                    <functionTarget>com.example.pgp.PgpCloudFunction</functionTarget>
+                    <functionTarget>com.example.pgp.SimpleEncryptFunction</functionTarget>
                 </configuration>
             </plugin>
         </plugins>

@@ -9,7 +9,7 @@ set -e
 FUNCTION_NAME="pgp-file-processor"
 REGION="us-central1"
 RUNTIME="java11"
-ENTRY_POINT="com.example.pgp.PgpCloudFunction"
+ENTRY_POINT="com.example.pgp.SimpleEncryptFunction"
 MEMORY="512MB"
 TIMEOUT="540s"
 
