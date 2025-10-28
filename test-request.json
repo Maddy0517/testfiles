@@ -1,0 +1,8 @@
+{
+    "Src_Bucket": "your-source-bucket",
+    "Tgt_Bucket": "your-target-bucket",
+    "Src_File": "path/to/encrypted/file.pgp",
+    "Gcs_ProjectID": "your-project-id",
+    "passphrase": "your-pgp-key-passphrase",
+    "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
+}
