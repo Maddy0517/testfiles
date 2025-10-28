@@ -4,11 +4,14 @@ A Google Cloud Function that decrypts PGP-encrypted files stored in Google Cloud
 
 ## Overview
 
-This Cloud Function:
-1. Downloads an encrypted PGP file from a source GCS bucket
-2. Retrieves the private key from Google Cloud Secret Manager
-3. Decrypts the file using the provided passphrase
-4. Uploads the decrypted file to a target GCS bucket
+This Cloud Function processes **encrypted PGP files** stored in Google Cloud Storage:
+
+1. **Input**: Downloads an **encrypted PGP file** from a source GCS bucket
+2. **Key Retrieval**: Retrieves the **private key** from Google Cloud Secret Manager
+3. **Decryption**: **Decrypts the encrypted file** using the private key and provided passphrase
+4. **Output**: Uploads the **decrypted file** to a target GCS bucket
+
+**Flow**: Encrypted File (GCS) → Decrypt with Private Key → Decrypted File (GCS)
 
 ## Prerequisites
 
@@ -105,11 +108,11 @@ Send a POST request to the function URL with the following JSON payload:
 
 ```json
 {
-    "Src_Bucket": "source-bucket-name",
-    "Tgt_Bucket": "target-bucket-name",
-    "Src_File": "path/to/encrypted/file.pgp",
-    "Gcs_ProjectID": "your-project-id",
-    "passphrase": "your-private-key-passphrase",
+    "Src_Bucket": "xyz",
+    "Tgt_Bucket": "xyz",
+    "Src_File": "gcsfile path",
+    "Gcs_ProjectID": "project_id",
+    "passphrase": "pqaddddzxx",
     "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
 }
 ```
@@ -127,14 +130,14 @@ Send a POST request to the function URL with the following JSON payload:
 
 ```bash
 curl -X POST \
-  https://us-central1-your-project-id.cloudfunctions.net/pgp-gcs-processor \
+  https://us-central1-project_id.cloudfunctions.net/pgp-gcs-processor \
   -H "Content-Type: application/json" \
   -d '{
-    "Src_Bucket": "my-encrypted-files",
-    "Tgt_Bucket": "my-decrypted-files",
-    "Src_File": "data/encrypted-file.pgp",
-    "Gcs_ProjectID": "my-project-123",
-    "passphrase": "my-secret-passphrase",
+    "Src_Bucket": "xyz",
+    "Tgt_Bucket": "xyz",
+    "Src_File": "gcsfile path",
+    "Gcs_ProjectID": "project_id",
+    "passphrase": "pqaddddzxx",
     "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
   }'
 ```

@@ -6,13 +6,13 @@
 # Default function URL (update with your actual function URL)
 FUNCTION_URL=${1:-"https://us-central1-your-project-id.cloudfunctions.net/pgp-gcs-processor"}
 
-# Test payload
+# Test payload - This will decrypt an encrypted PGP file
 TEST_PAYLOAD='{
-    "Src_Bucket": "my-encrypted-files",
-    "Tgt_Bucket": "my-decrypted-files", 
-    "Src_File": "test/sample-file.pgp",
-    "Gcs_ProjectID": "your-project-id",
-    "passphrase": "test-passphrase",
+    "Src_Bucket": "xyz",
+    "Tgt_Bucket": "xyz", 
+    "Src_File": "gcsfile path",
+    "Gcs_ProjectID": "project_id",
+    "passphrase": "pqaddddzxx",
     "Private_encrypt_Key": "PULSE_BYOD_FILE_ENCRYPTION_KEY"
 }'
 
