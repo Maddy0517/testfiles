@@ -1,0 +1,17 @@
+# Google Cloud Function deployment configuration
+# Use this with: gcloud functions deploy encrypt-file --source . --trigger-http --runtime python311 --allow-unauthenticated
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: function-config
+data:
+  # Function configuration
+  function_name: "encrypt-file"
+  runtime: "python311"
+  memory: "512MB"
+  timeout: "540s"
+  
+  # Environment variables (optional)
+  # Set these if needed for your specific deployment
+  # GOOGLE_CLOUD_PROJECT: "your-project-id"
