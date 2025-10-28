@@ -1,14 +1,13 @@
 # PGP Cloud Function
 
-A Google Cloud Function that decrypts PGP files from Google Cloud Storage, re-encrypts them with a private key from Secret Manager, and stores the result back to GCS.
+A Google Cloud Function that decrypts PGP files from Google Cloud Storage and stores the decrypted files back to GCS.
 
 ## Overview
 
 This Cloud Function performs the following operations:
 1. Downloads an encrypted PGP file from a source GCS bucket
-2. Decrypts the file using PGP decryption with a private key and passphrase
-3. Re-encrypts the decrypted content using the same private key (retrieved from Secret Manager)
-4. Uploads the re-encrypted file to a target GCS bucket
+2. Decrypts the file using PGP decryption with a private key (retrieved from Secret Manager) and passphrase
+3. Uploads the decrypted file to a target GCS bucket
 
 ## Prerequisites
 
@@ -138,7 +137,7 @@ Success response:
 {
     "success": true,
     "message": "File processed successfully",
-    "processedFile": "data_encrypted.pgp"
+    "processedFile": "data_decrypted"
 }
 ```
 
@@ -153,17 +152,16 @@ Error response:
 
 ## File Processing Flow
 
-1. **Download**: The function downloads the encrypted file from the source GCS bucket
+1. **Download**: The function downloads the encrypted PGP file from the source GCS bucket
 2. **Decrypt**: The file is decrypted using the PGP private key and passphrase
-3. **Re-encrypt**: The decrypted content is encrypted again using the same private key
-4. **Upload**: The re-encrypted file is uploaded to the target GCS bucket with "_encrypted.pgp" suffix
+3. **Upload**: The decrypted file is uploaded to the target GCS bucket with "_decrypted" suffix
 
 ## Error Handling
 
 The function includes comprehensive error handling for:
 - Invalid request parameters
 - Missing files in GCS
-- PGP decryption/encryption failures
+- PGP decryption failures
 - Secret Manager access issues
 - GCS upload/download failures
 
@@ -198,7 +196,7 @@ Add debug logging by setting the log level in the function configuration or add 
 ## Dependencies
 
 The project uses the following main dependencies:
-- Bouncy Castle PGP libraries for encryption/decryption
+- Bouncy Castle PGP libraries for decryption
 - Google Cloud Storage client library
 - Google Cloud Secret Manager client library
 - Google Cloud Functions Framework

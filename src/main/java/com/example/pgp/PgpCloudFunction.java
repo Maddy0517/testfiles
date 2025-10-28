@@ -202,7 +202,7 @@ public class PgpCloudFunction implements HttpFunction {
         
         BlobId targetBlobId = BlobId.of(request.Tgt_Bucket, targetFileName);
         BlobInfo targetBlobInfo = BlobInfo.newBuilder(targetBlobId)
-            .setContentType("application/octet-stream")
+            .setContentType(determineContentType(targetFileName))
             .build();
         
         storage.create(targetBlobInfo, decryptedBytes);
@@ -237,13 +237,31 @@ public class PgpCloudFunction implements HttpFunction {
     private String generateTargetFileName(String sourceFileName) {
         String baseName = extractFileName(sourceFileName);
         
-        // Remove .pgp extension if present
+        // Remove .pgp extension if present to get the original filename
         if (baseName.toLowerCase().endsWith(".pgp")) {
             baseName = baseName.substring(0, baseName.length() - 4);
         }
         
-        // Add encrypted suffix and .pgp extension
-        return baseName + "_encrypted.pgp";
+        // Add decrypted suffix to indicate this is the decrypted version
+        return baseName + "_decrypted";
+    }
+
+    private String determineContentType(String fileName) {
+        String lowerFileName = fileName.toLowerCase();
+        
+        if (lowerFileName.endsWith(".csv")) {
+            return "text/csv";
+        } else if (lowerFileName.endsWith(".txt")) {
+            return "text/plain";
+        } else if (lowerFileName.endsWith(".json")) {
+            return "application/json";
+        } else if (lowerFileName.endsWith(".xml")) {
+            return "application/xml";
+        } else if (lowerFileName.endsWith(".pdf")) {
+            return "application/pdf";
+        } else {
+            return "application/octet-stream";
+        }
     }
 
     private void sendResponse(HttpResponse response, int statusCode, PgpResponse pgpResponse) throws IOException {
