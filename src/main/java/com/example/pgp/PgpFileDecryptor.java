@@ -105,19 +105,54 @@ public class PgpFileDecryptor {
         }
 
         if (privateKey == null || publicKeyEncryptedData == null) {
-            StringBuilder msg = new StringBuilder("Matching secret key for message not found. Recipients: ");
+            // Fallback path: hidden recipients (keyID=0) or mismatched key IDs
+            // Try every secret key against each recipient by attempting decryption
             for (PGPPublicKeyEncryptedData pked : recipients) {
-                msg.append("0x").append(formatKeyId(pked.getKeyID())).append(' ');
-            }
-            msg.append(" | Available secret key IDs: ");
-            for (Iterator<PGPSecretKeyRing> rIt = secretKeyRings.getKeyRings(); rIt.hasNext();) {
-                PGPSecretKeyRing ring = rIt.next();
-                for (Iterator<PGPSecretKey> skIt = ring.getSecretKeys(); skIt.hasNext();) {
-                    PGPSecretKey sk = skIt.next();
-                    msg.append("0x").append(formatKeyId(sk.getKeyID())).append(' ');
+                boolean matched = false;
+                for (Iterator<PGPSecretKeyRing> rIt = secretKeyRings.getKeyRings(); rIt.hasNext() && !matched;) {
+                    PGPSecretKeyRing ring = rIt.next();
+                    for (Iterator<PGPSecretKey> skIt = ring.getSecretKeys(); skIt.hasNext() && !matched;) {
+                        PGPSecretKey sk = skIt.next();
+                        PGPPrivateKey candidate;
+                        try {
+                            candidate = sk.extractPrivateKey(new JcePBESecretKeyDecryptorBuilder()
+                                    .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                                    .build(passphrase));
+                        } catch (Exception ex) {
+                            continue; // wrong passphrase for this key or not extractable
+                        }
+                        if (candidate == null) continue;
+                        try {
+                            // If this doesn't throw, the key matches this recipient
+                            pked.getDataStream(new JcePublicKeyDataDecryptorFactoryBuilder()
+                                    .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                                    .build(candidate)).close();
+                            privateKey = candidate;
+                            publicKeyEncryptedData = pked;
+                            matched = true;
+                        } catch (Exception ignore) {
+                            // not the right key for this recipient
+                        }
+                    }
                 }
+                if (matched) break;
             }
-            throw new PGPException(msg.toString());
+
+            if (privateKey == null || publicKeyEncryptedData == null) {
+                StringBuilder msg = new StringBuilder("Matching secret key for message not found. Recipients: ");
+                for (PGPPublicKeyEncryptedData pked : recipients) {
+                    msg.append("0x").append(formatKeyId(pked.getKeyID())).append(' ');
+                }
+                msg.append(" | Available secret key IDs: ");
+                for (Iterator<PGPSecretKeyRing> rIt = secretKeyRings.getKeyRings(); rIt.hasNext();) {
+                    PGPSecretKeyRing ring = rIt.next();
+                    for (Iterator<PGPSecretKey> skIt = ring.getSecretKeys(); skIt.hasNext();) {
+                        PGPSecretKey sk = skIt.next();
+                        msg.append("0x").append(formatKeyId(sk.getKeyID())).append(' ');
+                    }
+                }
+                throw new PGPException(msg.toString());
+            }
         }
 
         // Decrypt the data
