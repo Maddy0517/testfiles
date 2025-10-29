@@ -8,11 +8,8 @@ import com.google.cloud.secretmanager.v1.SecretPayload;
 import com.google.cloud.storage.*;
 import com.google.protobuf.ByteString;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.io.Writer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,7 +27,8 @@ public class GcsPgpDecryptFunction implements HttpFunction {
 
     @Override
     public void service(HttpRequest request, HttpResponse response) throws Exception {
-        PrintWriter writer = response.getWriter();
+        response.setContentType("text/plain");
+        Writer writer = response.getWriter();
 
         // Required params
         String srcBucketName = request.getFirstQueryParameter("Src_Bucket").orElseThrow(() -> new Exception("Src_Bucket is required"));
@@ -85,7 +83,7 @@ public class GcsPgpDecryptFunction implements HttpFunction {
             logger.log(Level.WARNING, "Failed to delete source encrypted blob: " + srcFileName, e);
         }
 
-        writer.printf("Decrypted %s to %s in bucket %s", srcFileName, outputObjectName, tgtBucketName);
+        writer.write(String.format("Decrypted %s to %s in bucket %s", srcFileName, outputObjectName, tgtBucketName));
         logger.info(String.format("Decryption complete: gs://%s/%s -> gs://%s/%s", srcBucketName, srcFileName, tgtBucketName, outputObjectName));
     }
 
