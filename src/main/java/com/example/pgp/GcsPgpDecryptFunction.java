@@ -40,15 +40,19 @@ public class GcsPgpDecryptFunction implements HttpFunction {
 
         // Passphrase can be supplied via Secret Manager (preferred) or directly (legacy)
         Optional<String> passphraseSecretOpt = request.getFirstQueryParameter("Passphrase_Secret");
-        Optional<String> passphrasePlainOpt = request.getFirstQueryParameter("passphrase");
+        Optional<String> passphraseSecretNameOpt = request.getFirstQueryParameter("passphrase");
         String passphrase;
         if (passphraseSecretOpt.isPresent()) {
             passphrase = accessSecret(gcsProjectId, passphraseSecretOpt.get());
             if (passphrase == null || passphrase.isEmpty()) {
                 throw new IllegalStateException("Passphrase secret resolved to empty value");
             }
-        } else if (passphrasePlainOpt.isPresent()) {
-            passphrase = passphrasePlainOpt.get();
+        } else if (passphraseSecretNameOpt.isPresent()) {
+            // Treat 'passphrase' param as a Secret Manager secret name
+            passphrase = accessSecret(gcsProjectId, passphraseSecretNameOpt.get());
+            if (passphrase == null || passphrase.isEmpty()) {
+                throw new IllegalStateException("Passphrase secret resolved to empty value");
+            }
         } else {
             throw new Exception("Passphrase_Secret or passphrase is required");
         }
