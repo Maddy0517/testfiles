@@ -10,6 +10,7 @@ import com.google.protobuf.ByteString;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,8 +36,22 @@ public class GcsPgpDecryptFunction implements HttpFunction {
         String tgtBucketName = request.getFirstQueryParameter("Tgt_Bucket").orElseThrow(() -> new Exception("Tgt_Bucket is required"));
         String srcFileName = request.getFirstQueryParameter("Src_File").orElseThrow(() -> new Exception("Src_File is required"));
         String gcsProjectId = request.getFirstQueryParameter("Gcs_ProjectID").orElseThrow(() -> new Exception("Gcs_ProjectID is required"));
-        String passphrase = request.getFirstQueryParameter("passphrase").orElseThrow(() -> new Exception("passphrase is required"));
         String privateKeySecretName = request.getFirstQueryParameter("Private_encrypt_Key").orElseThrow(() -> new Exception("Private_encrypt_Key is required"));
+
+        // Passphrase can be supplied via Secret Manager (preferred) or directly (legacy)
+        Optional<String> passphraseSecretOpt = request.getFirstQueryParameter("Passphrase_Secret");
+        Optional<String> passphrasePlainOpt = request.getFirstQueryParameter("passphrase");
+        String passphrase;
+        if (passphraseSecretOpt.isPresent()) {
+            passphrase = accessSecret(gcsProjectId, passphraseSecretOpt.get());
+            if (passphrase == null || passphrase.isEmpty()) {
+                throw new IllegalStateException("Passphrase secret resolved to empty value");
+            }
+        } else if (passphrasePlainOpt.isPresent()) {
+            passphrase = passphrasePlainOpt.get();
+        } else {
+            throw new Exception("Passphrase_Secret or passphrase is required");
+        }
 
         logger.info(String.format("Starting PGP decryption for gs://%s/%s -> bucket %s", srcBucketName, srcFileName, tgtBucketName));
 
