@@ -7,9 +7,12 @@ import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
 import com.google.cloud.secretmanager.v1.SecretPayload;
 import com.google.cloud.storage.*;
 import com.google.protobuf.ByteString;
+import org.bouncycastle.bcpg.ArmoredInputException;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 // import java.util.Optional; // no longer needed as we require secret name params
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,14 +63,22 @@ public class GcsPgpDecryptFunction implements HttpFunction {
         byte[] encryptedBytes = encryptedBlob.getContent();
 
         // Fetch private key from Secret Manager (expected ASCII-armored PGP private key)
-        String privateKeyArmored = accessSecret(gcsProjectId, privateKeySecretName);
+        String privateKeyArmored = normalizeArmoredKey(accessSecret(gcsProjectId, privateKeySecretName));
         if (privateKeyArmored == null || privateKeyArmored.trim().isEmpty()) {
             throw new IllegalStateException("Private key from Secret Manager is empty");
         }
 
         // Decrypt
         PgpFileDecryptor decryptor = new PgpFileDecryptor();
-        byte[] decryptedBytes = decryptor.decryptBytes(encryptedBytes, privateKeyArmored, passphrase.toCharArray());
+        byte[] decryptedBytes;
+        try {
+            decryptedBytes = decryptor.decryptBytes(encryptedBytes, privateKeyArmored, passphrase.toCharArray());
+        } catch (ArmoredInputException armorErr) {
+            // Fallback: secret might be base64-encoded; decode then retry
+            byte[] decoded = Base64.getDecoder().decode(privateKeyArmored.replaceAll("\\s", ""));
+            String decodedKey = new String(decoded, StandardCharsets.UTF_8);
+            decryptedBytes = decryptor.decryptBytes(encryptedBytes, decodedKey, passphrase.toCharArray());
+        }
 
         // Determine output name
         String outputObjectName = deriveOutputName(srcFileName);
@@ -92,6 +103,17 @@ public class GcsPgpDecryptFunction implements HttpFunction {
         logger.info(String.format("Decryption complete: gs://%s/%s -> gs://%s/%s", srcBucketName, srcFileName, tgtBucketName, outputObjectName));
     }
 
+    private static String normalizeArmoredKey(String key) {
+        if (key == null) return null;
+        String s = key.trim();
+        // Normalize newlines and unescape literal \n
+        s = s.replace("\r\n", "\n").replace("\r", "\n");
+        s = s.replace("\\n", "\n");
+        if (s.startsWith("\"") && s.endsWith("\"")) {
+            s = s.substring(1, s.length() - 1);
+        }
+        return s;
+    }
     private static String deriveOutputName(String srcFileName) {
         // Goal: original base name + "_decrypted" before original extension.
         // Example: xyz_20251028.csv.pgp -> xyz_20251028_decrypted.csv

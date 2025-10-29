@@ -13,6 +13,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.security.Security;
 import java.util.Iterator;
 
@@ -31,11 +33,25 @@ public class PgpFileDecryptor {
      * Decrypt an encrypted byte array using the provided ASCII-armored private key and passphrase.
      */
     public byte[] decryptBytes(byte[] encryptedBytes, String privateKeyArmored, char[] passphrase) throws Exception {
+        String normalizedKey = normalizeArmoredKey(privateKeyArmored);
         try (InputStream encryptedInputStream = new ByteArrayInputStream(encryptedBytes);
-             InputStream privateKeyInputStream = new ByteArrayInputStream(privateKeyArmored.getBytes());
+             InputStream privateKeyInputStream = new ByteArrayInputStream(normalizedKey.getBytes(StandardCharsets.UTF_8));
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             decryptFile(encryptedInputStream, privateKeyInputStream, passphrase, outputStream);
             return outputStream.toByteArray();
+        } catch (Exception primary) {
+            // Fallback: attempt base64 decode of the secret and retry
+            try {
+                byte[] decoded = Base64.getDecoder().decode(normalizedKey.replaceAll("\\s", ""));
+                try (InputStream encryptedInputStream = new ByteArrayInputStream(encryptedBytes);
+                     InputStream privateKeyInputStream = new ByteArrayInputStream(decoded);
+                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                    decryptFile(encryptedInputStream, privateKeyInputStream, passphrase, outputStream);
+                    return outputStream.toByteArray();
+                }
+            } catch (Exception ignore) {
+                throw primary;
+            }
         }
     }
 
@@ -124,5 +140,16 @@ public class PgpFileDecryptor {
         return secretKey.extractPrivateKey(new JcePBESecretKeyDecryptorBuilder()
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .build(passphrase));
+    }
+
+    private static String normalizeArmoredKey(String key) {
+        if (key == null) return null;
+        String s = key.trim();
+        s = s.replace("\r\n", "\n").replace("\r", "\n");
+        s = s.replace("\\n", "\n");
+        if (s.startsWith("\"") && s.endsWith("\"")) {
+            s = s.substring(1, s.length() - 1);
+        }
+        return s;
     }
 }
