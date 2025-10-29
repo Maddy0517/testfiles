@@ -16,12 +16,16 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.security.Security;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Utility for decrypting PGP-encrypted data using a private key (Bouncy Castle).
  */
 public class PgpFileDecryptor {
+    private static final Logger logger = Logger.getLogger(PgpFileDecryptor.class.getName());
 
     static {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
@@ -80,21 +84,40 @@ public class PgpFileDecryptor {
             encryptedDataList = (PGPEncryptedDataList) objectFactory.nextObject();
         }
 
+        // Collect recipient key IDs for diagnostics
+        List<PGPPublicKeyEncryptedData> recipients = new ArrayList<>();
+        for (Iterator<PGPEncryptedData> it = encryptedDataList.getEncryptedDataObjects(); it.hasNext();) {
+            PGPEncryptedData ed = it.next();
+            if (ed instanceof PGPPublicKeyEncryptedData) {
+                recipients.add((PGPPublicKeyEncryptedData) ed);
+            }
+        }
+
+        // Try to match by keyID first
         PGPPrivateKey privateKey = null;
         PGPPublicKeyEncryptedData publicKeyEncryptedData = null;
-
-        @SuppressWarnings("unchecked")
-        Iterator<PGPEncryptedData> encryptedObjects = encryptedDataList.getEncryptedDataObjects();
-        while (privateKey == null && encryptedObjects.hasNext()) {
-            PGPEncryptedData encryptedData = encryptedObjects.next();
-            if (encryptedData instanceof PGPPublicKeyEncryptedData) {
-                publicKeyEncryptedData = (PGPPublicKeyEncryptedData) encryptedData;
-                privateKey = findPrivateKey(secretKeyRings, publicKeyEncryptedData.getKeyID(), passphrase);
+        for (PGPPublicKeyEncryptedData pked : recipients) {
+            privateKey = findPrivateKey(secretKeyRings, pked.getKeyID(), passphrase);
+            if (privateKey != null) {
+                publicKeyEncryptedData = pked;
+                break;
             }
         }
 
         if (privateKey == null || publicKeyEncryptedData == null) {
-            throw new PGPException("Matching secret key for message not found.");
+            StringBuilder msg = new StringBuilder("Matching secret key for message not found. Recipients: ");
+            for (PGPPublicKeyEncryptedData pked : recipients) {
+                msg.append("0x").append(formatKeyId(pked.getKeyID())).append(' ');
+            }
+            msg.append(" | Available secret key IDs: ");
+            for (Iterator<PGPSecretKeyRing> rIt = secretKeyRings.getKeyRings(); rIt.hasNext();) {
+                PGPSecretKeyRing ring = rIt.next();
+                for (Iterator<PGPSecretKey> skIt = ring.getSecretKeys(); skIt.hasNext();) {
+                    PGPSecretKey sk = skIt.next();
+                    msg.append("0x").append(formatKeyId(sk.getKeyID())).append(' ');
+                }
+            }
+            throw new PGPException(msg.toString());
         }
 
         // Decrypt the data
@@ -140,6 +163,10 @@ public class PgpFileDecryptor {
         return secretKey.extractPrivateKey(new JcePBESecretKeyDecryptorBuilder()
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .build(passphrase));
+    }
+
+    private static String formatKeyId(long keyId) {
+        return String.format("%016X", keyId);
     }
 
     private static String normalizeArmoredKey(String key) {
