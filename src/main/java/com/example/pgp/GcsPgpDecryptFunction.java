@@ -10,7 +10,7 @@ import com.google.protobuf.ByteString;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Optional;
+// import java.util.Optional; // no longer needed as we require secret name params
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,24 +37,10 @@ public class GcsPgpDecryptFunction implements HttpFunction {
         String srcFileName = request.getFirstQueryParameter("Src_File").orElseThrow(() -> new Exception("Src_File is required"));
         String gcsProjectId = request.getFirstQueryParameter("Gcs_ProjectID").orElseThrow(() -> new Exception("Gcs_ProjectID is required"));
         String privateKeySecretName = request.getFirstQueryParameter("Private_encrypt_Key").orElseThrow(() -> new Exception("Private_encrypt_Key is required"));
-
-        // Passphrase can be supplied via Secret Manager (preferred) or directly (legacy)
-        Optional<String> passphraseSecretOpt = request.getFirstQueryParameter("Passphrase_Secret");
-        Optional<String> passphraseSecretNameOpt = request.getFirstQueryParameter("passphrase");
-        String passphrase;
-        if (passphraseSecretOpt.isPresent()) {
-            passphrase = accessSecret(gcsProjectId, passphraseSecretOpt.get());
-            if (passphrase == null || passphrase.isEmpty()) {
-                throw new IllegalStateException("Passphrase secret resolved to empty value");
-            }
-        } else if (passphraseSecretNameOpt.isPresent()) {
-            // Treat 'passphrase' param as a Secret Manager secret name
-            passphrase = accessSecret(gcsProjectId, passphraseSecretNameOpt.get());
-            if (passphrase == null || passphrase.isEmpty()) {
-                throw new IllegalStateException("Passphrase secret resolved to empty value");
-            }
-        } else {
-            throw new Exception("Passphrase_Secret or passphrase is required");
+        String passphraseSecretName = request.getFirstQueryParameter("Passphrase_Secret").orElseThrow(() -> new Exception("Passphrase_Secret is required"));
+        String passphrase = accessSecret(gcsProjectId, passphraseSecretName);
+        if (passphrase == null || passphrase.isEmpty()) {
+            throw new IllegalStateException("Passphrase secret resolved to empty value");
         }
 
         logger.info(String.format("Starting PGP decryption for gs://%s/%s -> bucket %s", srcBucketName, srcFileName, tgtBucketName));
