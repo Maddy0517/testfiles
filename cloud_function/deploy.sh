@@ -1,22 +1,39 @@
 #!/bin/bash
 
 # ==============================================================================
-# Google Cloud Function Deployment Script (Java)
+# Google Cloud Function Deployment Script (Java - HTTP Trigger)
 # Deploys the GCS to BigQuery processing function
 # ==============================================================================
 
 set -e
 
-# Configuration - UPDATE THESE VALUES
-PROJECT_ID="${GCP_PROJECT_ID:-your-project-id}"
+# Configuration - Read from properties file or use defaults
+PROPERTIES_FILE="src/main/resources/application.properties"
+
+# Function to read property from file
+read_property() {
+    local key=$1
+    local default=$2
+    if [ -f "$PROPERTIES_FILE" ]; then
+        local value=$(grep "^${key}=" "$PROPERTIES_FILE" | cut -d'=' -f2 | tr -d ' ')
+        echo "${value:-$default}"
+    else
+        echo "$default"
+    fi
+}
+
+# Read configuration from properties file
+PROJECT_ID=$(read_property "gcp.project.id" "your-project-id")
+BUCKET_NAME=$(read_property "gcs.bucket.name" "your-bucket-name")
+DATASET_ID=$(read_property "bigquery.dataset.id" "your_dataset")
+TABLE_ID=$(read_property "bigquery.table.id" "file_uploads")
+
+# Deployment settings
 REGION="${GCP_REGION:-us-central1}"
-BUCKET_NAME="${GCS_BUCKET_NAME:-your-trigger-bucket}"
-FUNCTION_NAME="${FUNCTION_NAME:-process-file-uploads}"
-DATASET_ID="${BQ_DATASET_ID:-your_dataset}"
-TABLE_ID="${BQ_TABLE_ID:-file_uploads}"
+FUNCTION_NAME="${FUNCTION_NAME:-process-csv-files}"
 RUNTIME="java17"
 MEMORY="512MB"
-TIMEOUT="120s"
+TIMEOUT="300s"
 ENTRY_POINT="com.example.gcf.GcsFileToBigQueryFunction"
 
 echo "=============================================="
@@ -29,6 +46,7 @@ echo "Dataset:     ${DATASET_ID}"
 echo "Table:       ${TABLE_ID}"
 echo "Runtime:     ${RUNTIME}"
 echo "Entry Point: ${ENTRY_POINT}"
+echo "Trigger:     HTTP (Manual/Scheduled)"
 echo "=============================================="
 
 # Check if gcloud is installed
@@ -52,7 +70,6 @@ gcloud services enable cloudfunctions.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable storage.googleapis.com
 gcloud services enable bigquery.googleapis.com
-gcloud services enable eventarc.googleapis.com
 gcloud services enable run.googleapis.com
 
 # Build the project
@@ -71,30 +88,37 @@ bq mk --table \
   --clustering_fields hum_code,employee_id \
   ${PROJECT_ID}:${DATASET_ID}.${TABLE_ID} 2>/dev/null || echo "Table already exists"
 
-# Create GCS bucket if it doesn't exist
-echo "Creating GCS bucket (if not exists)..."
-gsutil mb -p ${PROJECT_ID} -l ${REGION} gs://${BUCKET_NAME} 2>/dev/null || echo "Bucket already exists"
-
-# Deploy Cloud Function (Gen 2)
-echo "Deploying Cloud Function (Gen 2)..."
+# Deploy Cloud Function (Gen 2) with HTTP trigger
+echo "Deploying Cloud Function (Gen 2) with HTTP trigger..."
 gcloud functions deploy ${FUNCTION_NAME} \
     --gen2 \
     --runtime=${RUNTIME} \
     --region=${REGION} \
     --source=. \
     --entry-point=${ENTRY_POINT} \
-    --trigger-event-filters="type=google.cloud.storage.object.v1.finalized" \
-    --trigger-event-filters="bucket=${BUCKET_NAME}" \
+    --trigger-http \
+    --allow-unauthenticated \
     --memory=${MEMORY} \
-    --timeout=${TIMEOUT} \
-    --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},BQ_DATASET_ID=${DATASET_ID},BQ_TABLE_ID=${TABLE_ID}"
+    --timeout=${TIMEOUT}
+
+# Get the function URL
+FUNCTION_URL=$(gcloud functions describe ${FUNCTION_NAME} --region=${REGION} --gen2 --format='value(serviceConfig.uri)')
 
 echo "=============================================="
 echo "Deployment Complete!"
 echo "=============================================="
 echo ""
-echo "To test, upload a file to gs://${BUCKET_NAME}/"
-echo "Example: gsutil cp sample_data/employees_HUM-100_report.csv gs://${BUCKET_NAME}/"
+echo "Function URL: ${FUNCTION_URL}"
+echo ""
+echo "To trigger manually:"
+echo "  curl ${FUNCTION_URL}"
+echo ""
+echo "To schedule with Cloud Scheduler:"
+echo "  gcloud scheduler jobs create http process-csv-job \\"
+echo "    --schedule='0 */6 * * *' \\"
+echo "    --uri='${FUNCTION_URL}' \\"
+echo "    --http-method=GET \\"
+echo "    --location=${REGION}"
 echo ""
 echo "View logs: gcloud functions logs read ${FUNCTION_NAME} --region=${REGION} --gen2"
 echo ""

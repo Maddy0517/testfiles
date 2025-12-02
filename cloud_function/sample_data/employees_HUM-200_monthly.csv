@@ -1,0 +1,5 @@
+employee_id,name,department,status
+EMP101,Sarah Miller,Finance,Active
+EMP102,Mike Wilson,Operations,Active
+EMP103,Emily Davis,IT,Active
+EMP104,Robert Brown,Finance,Inactive

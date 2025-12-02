@@ -19,19 +19,19 @@ class GcsFileToBigQueryFunctionTest {
     @BeforeEach
     void setUp() {
         // Create function with null dependencies (only testing extraction logic)
-        function = new GcsFileToBigQueryFunction(null, null, null);
+        function = new GcsFileToBigQueryFunction(null, null, null, null);
     }
 
     @ParameterizedTest
     @DisplayName("Should extract HUM code from various filename formats")
     @CsvSource({
             "employees_HUM-100_report.csv, HUM-100",
-            "data_HUM-200_quarterly.json, HUM-200",
+            "data_HUM-200_quarterly.csv, HUM-200",
             "HUM-300_employees.csv, HUM-300",
             "report_hum-150_2024.csv, HUM-150",
             "HUM-999_test_HUM-100.csv, HUM-999",
             "path/to/HUM-456_file.csv, HUM-456",
-            "uploads/2024/HUM-789_data.json, HUM-789",
+            "uploads/2024/HUM-789_data.csv, HUM-789",
             "HUM-1234_large_number.csv, HUM-1234"
     })
     void testExtractHumCode_ValidPatterns(String filename, String expectedCode) {
@@ -43,7 +43,7 @@ class GcsFileToBigQueryFunctionTest {
     @DisplayName("Should return UNKNOWN for filenames without HUM code")
     @CsvSource({
             "employees_report.csv",
-            "data_quarterly.json",
+            "data_quarterly.csv",
             "no_code_here.txt",
             "HUM_100_wrong_format.csv",
             "HUM100_missing_dash.csv",
@@ -74,5 +74,12 @@ class GcsFileToBigQueryFunctionTest {
     void testExtractHumCode_NestedPath() {
         String result = function.extractHumCode("uploads/2024/01/department/HUM-500_employees.csv");
         assertEquals("HUM-500", result);
+    }
+
+    @Test
+    @DisplayName("Should handle very long HUM codes")
+    void testExtractHumCode_LongNumbers() {
+        assertEquals("HUM-99999", function.extractHumCode("file_HUM-99999.csv"));
+        assertEquals("HUM-123456", function.extractHumCode("HUM-123456_data.csv"));
     }
 }

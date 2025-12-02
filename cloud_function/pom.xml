@@ -11,8 +11,9 @@
 
     <name>GCS to BigQuery Cloud Function</name>
     <description>
-        Google Cloud Function that processes files uploaded to GCS 
+        Google Cloud Function that processes CSV files from GCS 
         and loads employee data to BigQuery.
+        Triggered via HTTP (manual or scheduled job).
     </description>
 
     <properties>
@@ -24,10 +25,6 @@
         <google.cloud.functions.version>1.1.0</google.cloud.functions.version>
         <google.cloud.storage.version>2.30.1</google.cloud.storage.version>
         <google.cloud.bigquery.version>2.34.2</google.cloud.bigquery.version>
-        <cloudevents.version>2.5.0</cloudevents.version>
-        <google.events.version>0.14.0</google.events.version>
-        <gson.version>2.10.1</gson.version>
-        <protobuf.version>3.25.1</protobuf.version>
         <junit.version>5.10.1</junit.version>
         <mockito.version>5.8.0</mockito.version>
     </properties>
@@ -62,34 +59,6 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
-        </dependency>
-
-        <!-- CloudEvents SDK -->
-        <dependency>
-            <groupId>io.cloudevents</groupId>
-            <artifactId>cloudevents-api</artifactId>
-            <version>${cloudevents.version}</version>
-        </dependency>
-
-        <!-- Google Cloud Events (for StorageObjectData) -->
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloudevent-types</artifactId>
-            <version>${google.events.version}</version>
-        </dependency>
-
-        <!-- Gson for JSON parsing -->
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>${gson.version}</version>
-        </dependency>
-
-        <!-- Protocol Buffers -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-            <version>${protobuf.version}</version>
         </dependency>
 
         <!-- Testing dependencies -->
@@ -151,6 +120,87 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
             </plugin>
+
+            <!-- Maven Resources Plugin - to include properties file -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
         </plugins>
+
+        <!-- Include resources -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
+
+    <!-- Profiles for different environments -->
+    <profiles>
+        <profile>
+            <id>dev</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>config</directory>
+                        <includes>
+                            <include>application-dev.properties</include>
+                        </includes>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                        <filtering>false</filtering>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+        <profile>
+            <id>sit</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>config</directory>
+                        <includes>
+                            <include>application-sit.properties</include>
+                        </includes>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                        <filtering>false</filtering>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+        <profile>
+            <id>uat</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>config</directory>
+                        <includes>
+                            <include>application-uat.properties</include>
+                        </includes>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                        <filtering>false</filtering>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>config</directory>
+                        <includes>
+                            <include>application-prod.properties</include>
+                        </includes>
+                        <targetPath>${project.build.outputDirectory}</targetPath>
+                        <filtering>false</filtering>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
 </project>
