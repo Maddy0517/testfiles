@@ -1,0 +1,6 @@
+employee_id,name,department,salary
+EMP001,John Doe,Engineering,75000
+EMP002,Jane Smith,Sales,65000
+EMP003,Bob Johnson,Marketing,70000
+EMP004,Alice Brown,Engineering,80000
+EMP005,Charlie Wilson,Sales,60000
