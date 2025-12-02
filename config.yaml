@@ -1,0 +1,16 @@
+# Configuration file for Cloud Function deployment
+# You can use this as a reference for environment variables
+
+# GCP Configuration
+gcp_project_id: "your-project-id"
+bigquery_dataset_id: "your_dataset"
+bigquery_table_id: "employee_data"
+
+# File Processing Configuration
+employee_id_column: "employee_id"  # Column name in the file that contains employee_id
+
+# Pattern Configuration
+# The function will extract patterns like HUM-100, HUM-200, etc. from filenames
+# You can modify the regex in main.py if you need different pattern matching
+
+# Supported file formats: csv, json, xlsx, xls

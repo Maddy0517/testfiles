@@ -1,0 +1,6 @@
+employee_id,employee_name,department,salary,hire_date
+E001,John Doe,Engineering,75000,2023-01-15
+E002,Jane Smith,Marketing,68000,2023-02-20
+E003,Bob Johnson,Sales,72000,2023-03-10
+E004,Alice Williams,Engineering,82000,2023-04-05
+E005,Charlie Brown,HR,65000,2023-05-12

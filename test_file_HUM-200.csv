@@ -1,0 +1,6 @@
+employee_id,employee_name,department,salary,hire_date
+E006,David Miller,Finance,78000,2023-06-18
+E007,Emma Davis,Operations,71000,2023-07-22
+E008,Frank Wilson,IT,85000,2023-08-15
+E009,Grace Taylor,Marketing,69000,2023-09-10
+E010,Henry Anderson,Sales,76000,2023-10-05
