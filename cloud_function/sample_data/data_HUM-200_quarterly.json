@@ -1,0 +1,7 @@
+{
+    "employees": [
+        {"employee_id": "EMP101", "name": "Sarah Miller", "department": "Finance"},
+        {"employee_id": "EMP102", "name": "Mike Wilson", "department": "Operations"},
+        {"employee_id": "EMP103", "name": "Emily Davis", "department": "IT"}
+    ]
+}
