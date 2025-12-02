@@ -11,9 +11,7 @@ CREATE TABLE IF NOT EXISTS `your-project-id.your_dataset.file_uploads` (
     file_name STRING NOT NULL,
     hum_code STRING NOT NULL,
     bucket_name STRING,
-    processed_at TIMESTAMP,
-    
-    -- Optional: Add partition and clustering for better query performance
+    processed_at TIMESTAMP
 )
 PARTITION BY DATE(upload_date)
 CLUSTER BY hum_code, employee_id;
@@ -40,4 +38,10 @@ CLUSTER BY hum_code, employee_id;
 -- Get recent uploads
 -- SELECT * FROM `your-project-id.your_dataset.file_uploads` 
 -- WHERE upload_date >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+-- ORDER BY upload_date DESC;
+
+-- Get employee records by file
+-- SELECT file_name, hum_code, COUNT(*) as employee_count
+-- FROM `your-project-id.your_dataset.file_uploads`
+-- GROUP BY file_name, hum_code
 -- ORDER BY upload_date DESC;
