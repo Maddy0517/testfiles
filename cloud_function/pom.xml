@@ -9,24 +9,10 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>GCS to BigQuery Cloud Function</name>
-    <description>
-        Google Cloud Function that processes CSV files from GCS 
-        and loads employee data to BigQuery.
-        Triggered via HTTP (manual or scheduled job).
-    </description>
-
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        
-        <!-- Dependency versions -->
-        <google.cloud.functions.version>1.1.0</google.cloud.functions.version>
-        <google.cloud.storage.version>2.30.1</google.cloud.storage.version>
-        <google.cloud.bigquery.version>2.34.2</google.cloud.bigquery.version>
-        <junit.version>5.10.1</junit.version>
-        <mockito.version>5.8.0</mockito.version>
     </properties>
 
     <dependencyManagement>
@@ -42,69 +28,38 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Google Cloud Functions Framework -->
         <dependency>
             <groupId>com.google.cloud.functions</groupId>
             <artifactId>functions-framework-api</artifactId>
-            <version>${google.cloud.functions.version}</version>
+            <version>1.1.0</version>
         </dependency>
-
-        <!-- Google Cloud Storage -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-storage</artifactId>
         </dependency>
-
-        <!-- Google Cloud BigQuery -->
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-bigquery</artifactId>
         </dependency>
-
-        <!-- Testing dependencies -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <version>${mockito.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
+        <!-- Copy config file to resources -->
+        <resources>
+            <resource>
+                <directory>config</directory>
+                <includes>
+                    <include>application-dev.properties</include>
+                </includes>
+            </resource>
+        </resources>
+
         <plugins>
-            <!-- Maven Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
-                <configuration>
-                    <source>17</source>
-                    <target>17</target>
-                </configuration>
             </plugin>
-
-            <!-- Maven Surefire Plugin for testing -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.2</version>
-            </plugin>
-
-            <!-- Google Cloud Functions Plugin -->
             <plugin>
                 <groupId>com.google.cloud.functions</groupId>
                 <artifactId>function-maven-plugin</artifactId>
@@ -113,94 +68,6 @@
                     <functionTarget>com.example.gcf.GcsFileToBigQueryFunction</functionTarget>
                 </configuration>
             </plugin>
-
-            <!-- Maven JAR Plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
-            </plugin>
-
-            <!-- Maven Resources Plugin - to include properties file -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-            </plugin>
         </plugins>
-
-        <!-- Include resources -->
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/*.properties</include>
-                </includes>
-            </resource>
-        </resources>
     </build>
-
-    <!-- Profiles for different environments -->
-    <profiles>
-        <profile>
-            <id>dev</id>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>config</directory>
-                        <includes>
-                            <include>application-dev.properties</include>
-                        </includes>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                        <filtering>false</filtering>
-                    </resource>
-                </resources>
-            </build>
-        </profile>
-        <profile>
-            <id>sit</id>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>config</directory>
-                        <includes>
-                            <include>application-sit.properties</include>
-                        </includes>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                        <filtering>false</filtering>
-                    </resource>
-                </resources>
-            </build>
-        </profile>
-        <profile>
-            <id>uat</id>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>config</directory>
-                        <includes>
-                            <include>application-uat.properties</include>
-                        </includes>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                        <filtering>false</filtering>
-                    </resource>
-                </resources>
-            </build>
-        </profile>
-        <profile>
-            <id>prod</id>
-            <build>
-                <resources>
-                    <resource>
-                        <directory>config</directory>
-                        <includes>
-                            <include>application-prod.properties</include>
-                        </includes>
-                        <targetPath>${project.build.outputDirectory}</targetPath>
-                        <filtering>false</filtering>
-                    </resource>
-                </resources>
-            </build>
-        </profile>
-    </profiles>
 </project>
