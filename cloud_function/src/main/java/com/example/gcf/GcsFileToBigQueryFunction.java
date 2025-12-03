@@ -16,8 +16,6 @@ import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +30,7 @@ import java.util.regex.Pattern;
  * Google Cloud Function - Processes CSV files from GCS bucket and loads to BigQuery.
  * 
  * Trigger: HTTP (manual or scheduled job)
- * Configuration: Reads from application-dev.properties file
+ * Configuration: Reads from config/application-dev.properties file
  */
 public class GcsFileToBigQueryFunction implements HttpFunction {
 
@@ -42,7 +40,6 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
 
     private final CsvFileParser csvParser = new CsvFileParser();
 
-    // Empty constructor required by Cloud Functions
     public GcsFileToBigQueryFunction() {
         logger.info("GcsFileToBigQueryFunction initialized");
     }
@@ -62,7 +59,8 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
             String tableId = config.getProperty("bigquery.table.id");
             String filePrefix = config.getProperty("gcs.file.prefix", "");
 
-            logger.info("Config loaded - Project: " + projectId + ", Bucket: " + bucketName);
+            logger.info("Config loaded - Project: " + projectId + ", Bucket: " + bucketName + 
+                       ", Dataset: " + datasetId + ", Table: " + tableId);
 
             // Initialize GCP clients
             Storage storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
@@ -86,15 +84,20 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                 }
 
                 try {
+                    logger.info("Processing file: " + fileName);
+
                     // Extract HUM code from filename
                     String humCode = extractHumCode(fileName);
+                    logger.info("Extracted HUM code: " + humCode);
 
-                    // Get upload date
-                    String uploadDate = formatTimestamp(blob.getCreateTime());
+                    // Get upload date as epoch seconds (for BigQuery TIMESTAMP)
+                    long uploadDateEpoch = getUploadDateEpoch(blob.getCreateTime());
 
                     // Read and parse CSV content
                     String content = new String(blob.getContent(), StandardCharsets.UTF_8);
                     List<String> employeeIds = csvParser.extractEmployeeIds(content);
+
+                    logger.info("Found " + employeeIds.size() + " employee IDs in file: " + fileName);
 
                     if (employeeIds.isEmpty()) {
                         logger.info("No employee IDs found in: " + fileName);
@@ -103,7 +106,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
 
                     // Insert to BigQuery
                     int rowsInserted = insertToBigQuery(bigQuery, projectId, datasetId, tableId,
-                            employeeIds, uploadDate, fileName, humCode, bucketName);
+                            employeeIds, uploadDateEpoch, fileName, humCode, bucketName);
 
                     totalFiles++;
                     totalRows += rowsInserted;
@@ -117,7 +120,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                     logger.info("Processed: " + fileName + " | HUM: " + humCode + " | Rows: " + rowsInserted);
 
                 } catch (Exception e) {
-                    logger.log(Level.WARNING, "Error processing file: " + fileName, e);
+                    logger.log(Level.WARNING, "Error processing file: " + fileName + " - " + e.getMessage(), e);
                 }
             }
 
@@ -158,45 +161,55 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
     }
 
     /**
-     * Formats timestamp to string.
+     * Gets upload date as epoch seconds for BigQuery TIMESTAMP.
      */
-    private String formatTimestamp(Long epochMillis) {
+    private long getUploadDateEpoch(Long epochMillis) {
         if (epochMillis == null || epochMillis == 0) {
-            epochMillis = System.currentTimeMillis();
+            return Instant.now().getEpochSecond();
         }
-        return Instant.ofEpochMilli(epochMillis)
-                .atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return epochMillis / 1000; // Convert millis to seconds
     }
 
     /**
      * Inserts employee records to BigQuery.
      */
-    private int insertToBigQuery(BigQuery bigQuery, String projectId, String datasetId, 
-                                  String tableId, List<String> employeeIds, String uploadDate,
+    private int insertToBigQuery(BigQuery bigQuery, String projectId, String datasetId,
+                                  String tableId, List<String> employeeIds, long uploadDateEpoch,
                                   String fileName, String humCode, String bucketName) {
 
         TableId table = TableId.of(projectId, datasetId, tableId);
-        String processedAt = Instant.now().atOffset(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        long processedAtEpoch = Instant.now().getEpochSecond();
 
         List<InsertAllRequest.RowToInsert> rows = new ArrayList<>();
         for (String empId : employeeIds) {
             Map<String, Object> row = new HashMap<>();
             row.put("employee_id", empId);
-            row.put("upload_date", uploadDate);
+            row.put("upload_date", uploadDateEpoch);      // epoch seconds for TIMESTAMP
             row.put("file_name", fileName);
             row.put("hum_code", humCode);
             row.put("bucket_name", bucketName);
-            row.put("processed_at", processedAt);
+            row.put("processed_at", processedAtEpoch);    // epoch seconds for TIMESTAMP
             rows.add(InsertAllRequest.RowToInsert.of(row));
         }
 
+        logger.info("Inserting " + rows.size() + " rows to " + projectId + "." + datasetId + "." + tableId);
+
         InsertAllResponse resp = bigQuery.insertAll(InsertAllRequest.newBuilder(table).setRows(rows).build());
+        
         if (resp.hasErrors()) {
-            logger.severe("BigQuery insert errors: " + resp.getInsertErrors());
-            throw new RuntimeException("BigQuery insert failed");
+            // Log detailed errors
+            StringBuilder errorMsg = new StringBuilder("BigQuery insert errors:\n");
+            resp.getInsertErrors().forEach((index, errors) -> {
+                errors.forEach(error -> {
+                    errorMsg.append("Row ").append(index).append(": ")
+                           .append(error.getMessage())
+                           .append(" (reason: ").append(error.getReason()).append(")\n");
+                });
+            });
+            logger.severe(errorMsg.toString());
+            throw new RuntimeException("BigQuery insert failed: " + errorMsg);
         }
+        
         return rows.size();
     }
 
