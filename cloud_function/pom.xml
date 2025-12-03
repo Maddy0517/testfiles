@@ -44,16 +44,6 @@
     </dependencies>
 
     <build>
-        <!-- Copy config file to resources -->
-        <resources>
-            <resource>
-                <directory>config</directory>
-                <includes>
-                    <include>application-dev.properties</include>
-                </includes>
-            </resource>
-        </resources>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

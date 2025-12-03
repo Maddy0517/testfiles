@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 public class GcsFileToBigQueryFunction implements HttpFunction {
 
     private static final Logger logger = Logger.getLogger(GcsFileToBigQueryFunction.class.getName());
-    private static final String CONFIG_FILE = "application-dev.properties";
+    private static final String CONFIG_FILE = "config/application-dev.properties";
     private static final Pattern HUM_CODE_PATTERN = Pattern.compile("(HUM-\\d+)", Pattern.CASE_INSENSITIVE);
 
     private final CsvFileParser csvParser = new CsvFileParser();
