@@ -45,8 +45,6 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
     private static final Logger logger = Logger.getLogger(GcsFileToBigQueryFunction.class.getName());
     private static final String CONFIG_FILE = "config/dev.properties";
     private static final Pattern HUM_CODE_PATTERN = Pattern.compile("(HUM-\\d+)", Pattern.CASE_INSENSITIVE);
-    
-    // BigQuery TIMESTAMP format
     private static final DateTimeFormatter BQ_TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private String projectId;
@@ -60,6 +58,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
     private BigQuery bigQuery;
     private CsvFileParser csvParser;
 
+    // Constructor: Initializes GCP clients (Storage, BigQuery) and loads configuration from properties file
     public GcsFileToBigQueryFunction() {
         loadConfig();
         this.storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
@@ -68,6 +67,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         logger.info("Initialized - Project: " + projectId + ", Bucket: " + bucketName);
     }
 
+    // Loads configuration values (project ID, bucket name, dataset, table) from properties file
     private void loadConfig() {
         Properties props = new Properties();
         try (InputStream is = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
@@ -86,6 +86,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         }
     }
 
+    // Main entry point: Scans GCS bucket for CSV files, extracts data, and loads to BigQuery
     @Override
     public void service(HttpRequest request, HttpResponse response) throws Exception {
         logger.info("Function triggered - scanning bucket for CSV files");
@@ -98,23 +99,30 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         List<String> allCsvRows = new ArrayList<>();
 
         try {
+            // List all files in the GCS bucket (with optional prefix filter)
             Iterable<Blob> blobs = (filePrefix != null && !filePrefix.isEmpty())
                     ? storage.list(bucketName, Storage.BlobListOption.prefix(filePrefix)).iterateAll()
                     : storage.list(bucketName).iterateAll();
 
+            // Process each file in the bucket
             for (Blob blob : blobs) {
                 String fileName = blob.getName();
 
+                // Skip non-CSV files, directories, and temp folder
                 if (!fileName.toLowerCase().endsWith(".csv") || fileName.endsWith("/")
                         || fileName.startsWith(tempFolder)) {
                     continue;
                 }
 
                 try {
+                    // Extract HUM code (e.g., HUM-100) from filename
                     String humCode = extractHumCode(fileName);
+                    
+                    // Get file upload timestamp and current time for deletion date
                     String fileUploadDate = formatTimestamp(blob.getCreateTime());
                     String deletionDate = formatTimestamp(System.currentTimeMillis());
 
+                    // Read CSV file content and extract employee IDs
                     String content = new String(blob.getContent(), StandardCharsets.UTF_8);
                     List<String> employeeIds = csvParser.extractEmployeeIds(content);
 
@@ -123,8 +131,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                         continue;
                     }
 
-                    // Build CSV rows - ORDER MUST MATCH SCHEMA:
-                    // employee_id, retention_policy_name, source_file_name, file_upload_date, deletion_date
+                    // Build CSV rows for BigQuery load (order matches table schema)
                     for (String empId : employeeIds) {
                         String csvRow = String.join(",",
                                 escapeCSV(empId),                 // employee_id (STRING)
@@ -139,6 +146,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                     totalFiles++;
                     totalRows += employeeIds.size();
 
+                    // Store result for response
                     Map<String, Object> result = new HashMap<>();
                     result.put("file", fileName);
                     result.put("humCode", humCode);
@@ -152,6 +160,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                 }
             }
 
+            // Load all collected rows to BigQuery in one batch
             if (!allCsvRows.isEmpty()) {
                 loadToBigQuery(allCsvRows);
                 logger.info("Successfully loaded " + totalRows + " rows to BigQuery");
@@ -159,6 +168,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                 logger.info("No records to load");
             }
 
+            // Return success response
             String jsonResponse = buildResponse("success", totalFiles, totalRows, fileResults);
             response.setStatusCode(200);
             writer.write(jsonResponse);
@@ -170,19 +180,20 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         }
     }
 
+    // Creates temp CSV file in GCS and loads it to BigQuery using batch load job
     private void loadToBigQuery(List<String> csvRows) throws Exception {
-        // Create CSV content (no header)
+        // Build CSV content from all rows (no header - schema defined explicitly)
         StringBuilder csvContent = new StringBuilder();
         for (String row : csvRows) {
             csvContent.append(row).append("\n");
         }
 
-        // Log sample for debugging
+        // Log sample row for debugging
         if (!csvRows.isEmpty()) {
             logger.info("Sample CSV row: " + csvRows.get(0));
         }
 
-        // Upload temp CSV file to GCS
+        // Upload temp CSV file to GCS bucket
         String tempFileName = tempFolder + "/load_" + UUID.randomUUID() + ".csv";
         BlobId blobId = BlobId.of(bucketName, tempFileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("text/csv").build();
@@ -191,10 +202,11 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         logger.info("Created temp file: gs://" + bucketName + "/" + tempFileName);
 
         try {
+            // Configure BigQuery load job
             TableId table = TableId.of(projectId, datasetId, tableId);
             String sourceUri = "gs://" + bucketName + "/" + tempFileName;
 
-            // Schema matching your BigQuery table EXACTLY
+            // Define schema matching BigQuery table exactly
             Schema schema = Schema.of(
                 Field.of("employee_id", StandardSQLTypeName.STRING),
                 Field.of("retention_policy_name", StandardSQLTypeName.STRING),
@@ -203,21 +215,25 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                 Field.of("deletion_date", StandardSQLTypeName.TIMESTAMP)
             );
 
+            // Configure CSV options (no header row to skip)
             CsvOptions csvOptions = CsvOptions.newBuilder()
                     .setSkipLeadingRows(0)
                     .build();
 
+            // Build load job configuration
             LoadJobConfiguration loadConfig = LoadJobConfiguration.newBuilder(table, sourceUri)
                     .setFormatOptions(csvOptions)
                     .setSchema(schema)
                     .setWriteDisposition(JobInfo.WriteDisposition.WRITE_APPEND)
                     .build();
 
+            // Execute load job and wait for completion
             Job job = bigQuery.create(JobInfo.of(loadConfig));
             logger.info("Started BigQuery load job: " + job.getJobId().getJob());
 
             job = job.waitFor();
 
+            // Check job status
             if (job.isDone()) {
                 if (job.getStatus().getError() == null) {
                     logger.info("BigQuery load job completed successfully");
@@ -232,16 +248,19 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
             }
 
         } finally {
+            // Clean up: Delete temp file from GCS
             storage.delete(blobId);
             logger.info("Deleted temp file: " + tempFileName);
         }
     }
 
+    // Extracts HUM code (e.g., HUM-100, HUM-200) from the filename using regex pattern
     private String extractHumCode(String fileName) {
         Matcher matcher = HUM_CODE_PATTERN.matcher(fileName);
         return matcher.find() ? matcher.group(1).toUpperCase() : "UNKNOWN";
     }
 
+    // Converts epoch milliseconds to BigQuery TIMESTAMP format (yyyy-MM-dd HH:mm:ss)
     private String formatTimestamp(Long epochMillis) {
         if (epochMillis == null || epochMillis == 0) {
             epochMillis = System.currentTimeMillis();
@@ -251,6 +270,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                 .format(BQ_TIMESTAMP_FORMAT);
     }
 
+    // Escapes special characters (comma, quote, newline) in CSV values
     private String escapeCSV(String value) {
         if (value == null) return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
@@ -259,11 +279,13 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         return value;
     }
 
+    // Escapes special characters (backslash, quote) for JSON string values
     private String escapeJson(String value) {
         if (value == null) return "";
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    // Builds JSON response with processing summary (status, file count, row count, file details)
     private String buildResponse(String status, int files, int rows, List<Map<String, Object>> results) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"status\":\"").append(status).append("\",");
