@@ -40,43 +40,11 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
     private static final String CONFIG_FILE = "application-dev.properties";
     private static final Pattern HUM_CODE_PATTERN = Pattern.compile("(HUM-\\d+)", Pattern.CASE_INSENSITIVE);
 
-    // Configuration properties
-    private String projectId;
-    private String bucketName;
-    private String datasetId;
-    private String tableId;
-    private String filePrefix;
+    private final CsvFileParser csvParser = new CsvFileParser();
 
-    private Storage storage;
-    private BigQuery bigQuery;
-    private CsvFileParser csvParser;
-
+    // Empty constructor required by Cloud Functions
     public GcsFileToBigQueryFunction() {
-        loadConfig();
-        this.storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
-        this.bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
-        this.csvParser = new CsvFileParser();
-        logger.info("Initialized - Project: " + projectId + ", Bucket: " + bucketName);
-    }
-
-    /**
-     * Loads configuration from properties file.
-     */
-    private void loadConfig() {
-        Properties props = new Properties();
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
-            if (is == null) {
-                throw new RuntimeException("Config file not found: " + CONFIG_FILE);
-            }
-            props.load(is);
-            this.projectId = props.getProperty("gcp.project.id");
-            this.bucketName = props.getProperty("gcs.bucket.name");
-            this.datasetId = props.getProperty("bigquery.dataset.id");
-            this.tableId = props.getProperty("bigquery.table.id");
-            this.filePrefix = props.getProperty("gcs.file.prefix", "");
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load config: " + e.getMessage(), e);
-        }
+        logger.info("GcsFileToBigQueryFunction initialized");
     }
 
     @Override
@@ -85,11 +53,25 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         BufferedWriter writer = response.getWriter();
         response.setContentType("application/json");
 
-        int totalFiles = 0;
-        int totalRows = 0;
-        List<Map<String, Object>> fileResults = new ArrayList<>();
-
         try {
+            // Load configuration
+            Properties config = loadConfig();
+            String projectId = config.getProperty("gcp.project.id");
+            String bucketName = config.getProperty("gcs.bucket.name");
+            String datasetId = config.getProperty("bigquery.dataset.id");
+            String tableId = config.getProperty("bigquery.table.id");
+            String filePrefix = config.getProperty("gcs.file.prefix", "");
+
+            logger.info("Config loaded - Project: " + projectId + ", Bucket: " + bucketName);
+
+            // Initialize GCP clients
+            Storage storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+            BigQuery bigQuery = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService();
+
+            int totalFiles = 0;
+            int totalRows = 0;
+            List<Map<String, Object>> fileResults = new ArrayList<>();
+
             // List all blobs in bucket
             Iterable<Blob> blobs = (filePrefix != null && !filePrefix.isEmpty())
                     ? storage.list(bucketName, Storage.BlobListOption.prefix(filePrefix)).iterateAll()
@@ -120,7 +102,8 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
                     }
 
                     // Insert to BigQuery
-                    int rowsInserted = insertToBigQuery(employeeIds, uploadDate, fileName, humCode);
+                    int rowsInserted = insertToBigQuery(bigQuery, projectId, datasetId, tableId,
+                            employeeIds, uploadDate, fileName, humCode, bucketName);
 
                     totalFiles++;
                     totalRows += rowsInserted;
@@ -144,9 +127,25 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
             writer.write(jsonResponse);
 
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error processing files", e);
+            logger.log(Level.SEVERE, "Error: " + e.getMessage(), e);
             response.setStatusCode(500);
-            writer.write("{\"status\":\"error\",\"message\":\"" + e.getMessage() + "\"}");
+            writer.write("{\"status\":\"error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
+        }
+    }
+
+    /**
+     * Loads configuration from properties file.
+     */
+    private Properties loadConfig() {
+        Properties props = new Properties();
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
+            if (is == null) {
+                throw new RuntimeException("Config file not found: " + CONFIG_FILE);
+            }
+            props.load(is);
+            return props;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load config: " + e.getMessage(), e);
         }
     }
 
@@ -173,9 +172,10 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
     /**
      * Inserts employee records to BigQuery.
      */
-    private int insertToBigQuery(List<String> employeeIds, String uploadDate, 
-                                  String fileName, String humCode) {
-        
+    private int insertToBigQuery(BigQuery bigQuery, String projectId, String datasetId, 
+                                  String tableId, List<String> employeeIds, String uploadDate,
+                                  String fileName, String humCode, String bucketName) {
+
         TableId table = TableId.of(projectId, datasetId, tableId);
         String processedAt = Instant.now().atOffset(ZoneOffset.UTC)
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -194,6 +194,7 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
 
         InsertAllResponse resp = bigQuery.insertAll(InsertAllRequest.newBuilder(table).setRows(rows).build());
         if (resp.hasErrors()) {
+            logger.severe("BigQuery insert errors: " + resp.getInsertErrors());
             throw new RuntimeException("BigQuery insert failed");
         }
         return rows.size();
@@ -210,12 +211,20 @@ public class GcsFileToBigQueryFunction implements HttpFunction {
         sb.append("\"files\":[");
         for (int i = 0; i < results.size(); i++) {
             Map<String, Object> r = results.get(i);
-            sb.append("{\"file\":\"").append(r.get("file")).append("\",");
-            sb.append("\"humCode\":\"").append(r.get("humCode")).append("\",");
+            sb.append("{\"file\":\"").append(escapeJson(String.valueOf(r.get("file")))).append("\",");
+            sb.append("\"humCode\":\"").append(escapeJson(String.valueOf(r.get("humCode")))).append("\",");
             sb.append("\"rows\":").append(r.get("rows")).append("}");
             if (i < results.size() - 1) sb.append(",");
         }
         sb.append("]}");
         return sb.toString();
+    }
+
+    /**
+     * Escapes special characters for JSON.
+     */
+    private String escapeJson(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
