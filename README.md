@@ -1,467 +1,246 @@
-# Workday Employee Data Ingestion - Google Cloud Dataflow Pipeline
+# Workday Employee Data Ingestion - Google Cloud Dataflow
 
-A high-performance, scalable Apache Beam pipeline for ingesting Workday employee data via SOAP API and loading it into Google BigQuery using parallel page processing.
-
-## Overview
-
-This pipeline extracts employee data from Workday's SOAP API with optimal performance by:
-- **Parallel Page Processing**: Each page (999 records max) is processed independently across distributed workers
-- **Configurable Effective Date**: Filter data based on effective date
-- **Automatic Retry Logic**: Built-in retry mechanism with exponential backoff
-- **Scalable Architecture**: Leverages Google Cloud Dataflow's distributed processing
-- **BigQuery Integration**: Direct loading with schema management
-
-## Architecture
-
-```
-┌─────────────────┐
-│  Workday SOAP   │
-│      API        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────┐
-│   Dataflow Pipeline                 │
-│                                     │
-│  1. Get Total Count                 │
-│  2. Generate Page Requests          │
-│  3. Fetch Pages in Parallel ████    │
-│  4. Transform to TableRows          │
-│  5. Write to BigQuery               │
-└────────┬────────────────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│   BigQuery      │
-│   Table         │
-└─────────────────┘
-```
-
-## Features
-
-### Performance Optimizations
-- **Parallel Processing**: Distributes page fetching across multiple Dataflow workers
-- **Batch Loading**: Uses BigQuery FILE_LOADS method for efficient bulk inserts
-- **Worker Autoscaling**: Automatically scales workers based on workload
-- **Connection Pooling**: Reuses SOAP connections within workers
-
-### Reliability
-- **Automatic Retries**: Configurable retry logic for transient failures
-- **Error Handling**: Comprehensive error logging and handling
-- **Checkpointing**: Dataflow's built-in checkpointing for fault tolerance
-
-### Data Quality
-- **Schema Enforcement**: Predefined BigQuery schema with validation
-- **Timestamp Tracking**: Records ingestion timestamp for each record
-- **Effective Date Filtering**: Ensures data freshness
-
-## Prerequisites
-
-1. **Java Development Kit (JDK) 11+**
-   ```bash
-   java -version
-   ```
-
-2. **Apache Maven 3.6+**
-   ```bash
-   mvn -version
-   ```
-
-3. **Google Cloud Platform Account**
-   - Project with billing enabled
-   - BigQuery API enabled
-   - Dataflow API enabled
-   - Cloud Storage API enabled
-
-4. **Workday SOAP API Access**
-   - SOAP API URL
-   - Integration user credentials
-   - Tenant ID
-
-5. **Google Cloud SDK (for Dataflow execution)**
-   ```bash
-   gcloud auth application-default login
-   ```
+High-performance Apache Beam pipeline for ingesting Workday employee data via SOAP API into BigQuery with parallel page processing.
 
 ## Project Structure
 
 ```
 workday-dataflow-pipeline/
-├── pom.xml                                 # Maven configuration
-├── config.properties                       # Configuration file
-├── run-pipeline.sh                         # Execution script
-├── README.md                               # This file
-└── src/
-    └── main/
-        └── java/
-            └── com/
-                └── example/
-                    └── dataflow/
-                        ├── WorkdayEmployeeDataflowPipeline.java  # Main pipeline
-                        ├── client/
-                        │   └── WorkdaySoapClient.java            # SOAP client
-                        ├── config/
-                        │   └── WorkdayConfig.java                # Configuration
-                        ├── model/
-                        │   ├── Employee.java                     # Employee model
-                        │   └── PageRequest.java                  # Page request model
-                        ├── transform/
-                        │   ├── GeneratePageRequestsFn.java       # Page generator
-                        │   ├── FetchEmployeePageFn.java          # Page fetcher
-                        │   └── EmployeeToTableRowFn.java         # BQ converter
-                        └── utils/
-                            └── BigQuerySchemaFactory.java        # Schema factory
+├── pom.xml                           # Maven configuration
+├── application.properties            # Configuration file
+├── run.sh                            # Execution script
+├── README.md                         # This file
+└── src/main/java/com/example/dataflow/
+    ├── WorkdayDataflowPipeline.java  # Main pipeline class
+    ├── WorkdaySoapHandler.java       # SOAP API handler
+    ├── WorkdayDataModel.java         # Data models (Employee, PageRequest, Config)
+    └── BigQuerySchema.java           # BigQuery schema definition
 ```
 
-## Configuration
+## Features
 
-### 1. Update `config.properties`
+- **Parallel Processing**: Processes up to 999 records per page across distributed workers
+- **Automatic Retries**: Configurable retry logic for API failures
+- **Scalable**: Handles millions of employee records
+- **BigQuery Integration**: Direct loading with schema management
+
+## Prerequisites
+
+- Java 11+
+- Maven 3.6+
+- Google Cloud account with Dataflow and BigQuery APIs enabled
+- Workday SOAP API credentials
+
+## Quick Start
+
+### 1. Configure
+
+Edit `application.properties` with your credentials:
 
 ```properties
-# Workday Configuration
 workday.soap.url=https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0
 workday.username=integration_user@tenant
-workday.password=your-secure-password
+workday.password=your-password
 workday.tenant.id=your-tenant
-
-# Effective Date
 effective.date=2025-12-15
-
-# BigQuery Configuration
-bigquery.project.id=your-gcp-project-id
-bigquery.dataset.id=workday_data
-bigquery.table.id=employees
-
-# Dataflow Configuration
-dataflow.project.id=your-gcp-project-id
-dataflow.region=us-central1
-dataflow.temp.location=gs://your-bucket/temp
-dataflow.staging.location=gs://your-bucket/staging
-dataflow.num.workers=10
-dataflow.max.num.workers=50
+bigquery.table=your-project:workday_data.employees
 ```
 
-### 2. Set Environment Variables (Alternative)
-
-```bash
-export WORKDAY_SOAP_URL="https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0"
-export WORKDAY_USERNAME="integration_user@tenant"
-export WORKDAY_PASSWORD="your-password"
-export WORKDAY_TENANT_ID="your-tenant"
-export EFFECTIVE_DATE="2025-12-15"
-export BIGQUERY_TABLE="your-project:workday_data.employees"
-export GCP_PROJECT_ID="your-gcp-project-id"
-export TEMP_LOCATION="gs://your-bucket/temp"
-export STAGING_LOCATION="gs://your-bucket/staging"
-```
-
-## Building the Project
+### 2. Build
 
 ```bash
 mvn clean package
 ```
 
-This creates: `target/workday-dataflow-pipeline-1.0.0.jar`
+### 3. Run Locally (Testing)
 
-## Running the Pipeline
-
-### Option 1: Using the Shell Script
-
-#### Local Testing (DirectRunner)
 ```bash
-chmod +x run-pipeline.sh
-./run-pipeline.sh local
+export WORKDAY_SOAP_URL="https://wd2-impl.workday.com/ccx/service/tenant/Human_Resources/v38.0"
+export WORKDAY_USERNAME="user@tenant"
+export WORKDAY_PASSWORD="password"
+export WORKDAY_TENANT_ID="tenant"
+export EFFECTIVE_DATE="2025-12-15"
+export BIGQUERY_TABLE="project:dataset.employees"
+
+./run.sh local
 ```
 
-#### Production (DataflowRunner)
+### 4. Run on Dataflow (Production)
+
 ```bash
-./run-pipeline.sh dataflow
+export GCP_PROJECT_ID="your-project"
+export TEMP_LOCATION="gs://your-bucket/temp"
+export STAGING_LOCATION="gs://your-bucket/staging"
+export NUM_WORKERS=10
+export MAX_NUM_WORKERS=50
+
+./run.sh dataflow
 ```
 
-### Option 2: Direct Maven Execution
+## Pipeline Architecture
 
-#### Local Testing
-```bash
-mvn compile exec:java \
-  -Dexec.mainClass=com.example.dataflow.WorkdayEmployeeDataflowPipeline \
-  -Dexec.args="--runner=DirectRunner \
-    --workdaySoapUrl=https://wd2-impl.workday.com/ccx/service/tenant/Human_Resources/v38.0 \
-    --workdayUsername=user@tenant \
-    --workdayPassword=password \
-    --workdayTenantId=tenant \
-    --effectiveDate=2025-12-15 \
-    --bigQueryTable=project:dataset.employees \
-    --writeDisposition=WRITE_APPEND"
+```
+Workday API (SOAP) → Get Total Count → Generate Pages → Parallel Fetch → Transform → BigQuery
+                                            ↓
+                                    (999 records/page)
+                                            ↓
+                                    Distributed Workers
 ```
 
-#### Google Cloud Dataflow
-```bash
-mvn compile exec:java \
-  -Dexec.mainClass=com.example.dataflow.WorkdayEmployeeDataflowPipeline \
-  -Dexec.args="--runner=DataflowRunner \
-    --project=your-project-id \
-    --region=us-central1 \
-    --tempLocation=gs://your-bucket/temp \
-    --stagingLocation=gs://your-bucket/staging \
-    --numWorkers=10 \
-    --maxNumWorkers=50 \
-    --workerMachineType=n1-standard-4 \
-    --workdaySoapUrl=https://wd2-impl.workday.com/ccx/service/tenant/Human_Resources/v38.0 \
-    --workdayUsername=user@tenant \
-    --workdayPassword=password \
-    --workdayTenantId=tenant \
-    --effectiveDate=2025-12-15 \
-    --bigQueryTable=project:dataset.employees \
-    --writeDisposition=WRITE_APPEND"
-```
+**How it works:**
+1. Fetches total employee count from Workday
+2. Calculates number of pages (totalCount / 999)
+3. Distributes page fetching across multiple workers in parallel
+4. Transforms employee data to BigQuery format
+5. Batch loads into BigQuery table
 
-## Pipeline Parameters
+## Configuration Parameters
 
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `--runner` | Yes | - | DirectRunner (local) or DataflowRunner (cloud) |
-| `--workdaySoapUrl` | Yes | - | Workday SOAP API endpoint URL |
-| `--workdayUsername` | Yes | - | Workday integration username |
-| `--workdayPassword` | Yes | - | Workday password |
-| `--workdayTenantId` | No | - | Workday tenant ID |
-| `--effectiveDate` | Yes | - | Effective date (YYYY-MM-DD) |
-| `--bigQueryTable` | Yes | - | BigQuery table (project:dataset.table) |
-| `--writeDisposition` | No | WRITE_APPEND | WRITE_TRUNCATE, WRITE_APPEND, WRITE_EMPTY |
-| `--createDisposition` | No | CREATE_IF_NEEDED | CREATE_IF_NEEDED, CREATE_NEVER |
-| `--maxRetries` | No | 3 | Maximum API retry attempts |
-| `--estimatedTotalCount` | No | 0 | Estimated count (0 = fetch dynamically) |
-| `--project` | Yes* | - | GCP project ID (*Dataflow only) |
-| `--region` | No | us-central1 | GCP region (Dataflow only) |
-| `--tempLocation` | Yes* | - | GCS temp location (*Dataflow only) |
-| `--stagingLocation` | Yes* | - | GCS staging location (*Dataflow only) |
-| `--numWorkers` | No | 10 | Initial worker count (Dataflow only) |
-| `--maxNumWorkers` | No | 50 | Maximum worker count (Dataflow only) |
+### Required Parameters
+- `--workdaySoapUrl`: Workday SOAP API endpoint
+- `--workdayUsername`: Integration user (format: user@tenant)
+- `--workdayPassword`: User password
+- `--effectiveDate`: Data extraction date (YYYY-MM-DD)
+- `--bigQueryTable`: Destination table (project:dataset.table)
+
+### Optional Parameters
+- `--workdayTenantId`: Tenant identifier
+- `--writeDisposition`: WRITE_APPEND (default), WRITE_TRUNCATE, WRITE_EMPTY
+- `--maxRetries`: Retry attempts (default: 3)
+- `--estimatedTotalCount`: Pre-calculated count (0 = auto-fetch)
+
+### Dataflow Parameters
+- `--project`: GCP project ID
+- `--region`: GCP region (default: us-central1)
+- `--tempLocation`: GCS temp location (required)
+- `--stagingLocation`: GCS staging location (required)
+- `--numWorkers`: Initial worker count (default: 10)
+- `--maxNumWorkers`: Max workers (default: 50)
 
 ## BigQuery Schema
 
-The pipeline creates a BigQuery table with the following schema:
+The pipeline creates a table with these fields:
 
-```sql
-CREATE TABLE `project.dataset.employees` (
-  employee_id STRING NOT NULL,
-  first_name STRING,
-  last_name STRING,
-  email STRING,
-  phone STRING,
-  hire_date STRING,
-  job_title STRING,
-  department STRING,
-  manager_id STRING,
-  location STRING,
-  employment_status STRING,
-  effective_date STRING,
-  ingestion_timestamp TIMESTAMP NOT NULL
-);
-```
+| Field               | Type      | Mode     | Description                    |
+|---------------------|-----------|----------|--------------------------------|
+| employee_id         | STRING    | REQUIRED | Unique employee identifier     |
+| first_name          | STRING    | NULLABLE | Employee first name            |
+| last_name           | STRING    | NULLABLE | Employee last name             |
+| email               | STRING    | NULLABLE | Email address                  |
+| phone               | STRING    | NULLABLE | Phone number                   |
+| hire_date           | STRING    | NULLABLE | Hire date                      |
+| job_title           | STRING    | NULLABLE | Job title                      |
+| department          | STRING    | NULLABLE | Department                     |
+| manager_id          | STRING    | NULLABLE | Manager employee ID            |
+| location            | STRING    | NULLABLE | Work location                  |
+| employment_status   | STRING    | NULLABLE | Employment status              |
+| effective_date      | STRING    | NULLABLE | Effective date of extract      |
+| ingestion_timestamp | TIMESTAMP | REQUIRED | Ingestion timestamp            |
 
-## Performance Tuning
+## Performance Guidelines
 
-### For Large Datasets (>100K records)
+### Dataset Sizing
 
-```bash
---numWorkers=20 \
---maxNumWorkers=100 \
---workerMachineType=n1-standard-8 \
---maxRetries=5
-```
-
-### For Small Datasets (<10K records)
-
-```bash
---numWorkers=2 \
---maxNumWorkers=5 \
---workerMachineType=n1-standard-2
-```
+| Employees | Workers | Machine Type  | Est. Time | Est. Cost |
+|-----------|---------|---------------|-----------|-----------|
+| 5,000     | 2       | n1-standard-2 | 5 min     | $0.50     |
+| 50,000    | 10      | n1-standard-4 | 30 min    | $5        |
+| 500,000   | 30      | n1-standard-8 | 45 min    | $30       |
 
 ### Optimization Tips
 
-1. **Worker Count**: Set `numWorkers` based on total pages (totalRecords / 999)
-   - Example: 50,000 records = 51 pages → Use 10-20 workers
-
-2. **Machine Type**: Use higher CPU for faster SOAP processing
-   - `n1-standard-4`: Good for most workloads
-   - `n1-standard-8`: Better for >100K records
-   - `n1-highmem-4`: If memory issues occur
-
-3. **BigQuery Write Method**:
-   - `FILE_LOADS`: Best for large batches (>10K records)
-   - `STREAMING_INSERTS`: Better for small, frequent loads
-
-4. **GCS Bucket Location**: Use same region as Dataflow for lower latency
+1. **Right-size workers**: `numWorkers = totalPages / 5`
+2. **Use faster machines**: n1-standard-8 for large datasets
+3. **Batch writes**: Pipeline uses FILE_LOADS for efficiency
+4. **Partition tables**: Partition by ingestion_timestamp for query performance
 
 ## Monitoring
 
-### Dataflow Console
-Monitor job progress at:
+View job status in GCP Console:
 ```
-https://console.cloud.google.com/dataflow/jobs/[REGION]/[JOB_NAME]?project=[PROJECT_ID]
+https://console.cloud.google.com/dataflow/jobs
 ```
 
-### Key Metrics to Monitor
-- **Elements Added**: Total employees processed
-- **Data Watermark**: Pipeline progress
-- **System Lag**: Processing delay
-- **Worker CPU/Memory**: Resource utilization
-- **Errors**: Failed elements
-
-### Logging
-
-View logs with:
+Check logs:
 ```bash
-gcloud logging read "resource.type=dataflow_step AND resource.labels.job_name=[JOB_NAME]" --limit 100 --format json
+gcloud logging read "resource.type=dataflow_step" --limit=50
 ```
 
-## Error Handling
-
-The pipeline includes comprehensive error handling:
-
-1. **SOAP API Failures**: Automatic retry with exponential backoff
-2. **Network Issues**: Connection timeout and retry logic
-3. **BigQuery Errors**: Automatic retry for transient failures
-4. **Data Parsing Errors**: Logged but don't stop pipeline
+Query results:
+```sql
+SELECT COUNT(*) FROM `your-project.workday_data.employees`;
+```
 
 ## Troubleshooting
 
-### Common Issues
+### Authentication Error
+**Issue**: 401 Unauthorized
+**Fix**: Verify username format is `user@tenant` and password is correct
 
-#### 1. Authentication Errors
-```
-Error: 401 Unauthorized
-```
-**Solution**: Verify Workday credentials and tenant ID
-
-#### 2. BigQuery Permission Errors
-```
-Error: Permission denied on BigQuery
-```
-**Solution**: Ensure service account has BigQuery Data Editor role
+### Permission Denied on BigQuery
+**Issue**: Permission denied
+**Fix**: Grant BigQuery Data Editor role
 ```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member=serviceAccount:SERVICE_ACCOUNT \
+  --member=user:YOUR-EMAIL \
   --role=roles/bigquery.dataEditor
 ```
 
-#### 3. Out of Memory
-```
-Error: Java heap space
-```
-**Solution**: Increase worker machine type or memory
+### Out of Memory
+**Issue**: Java heap space error
+**Fix**: Increase worker machine type
 ```bash
 --workerMachineType=n1-highmem-4
 ```
 
-#### 4. SOAP Timeout
-```
-Error: Read timed out
-```
-**Solution**: Increase timeout in WorkdayConfig or reduce page size
+### SOAP Timeout
+**Issue**: Read timed out
+**Fix**: Timeouts are set to 60s connection, 120s read. Increase in `WorkdayDataModel.WorkdayConfig` if needed.
 
-## Security Best Practices
+## Code Overview
 
-1. **Never commit credentials** to version control
-2. **Use Secret Manager** for production credentials:
-   ```bash
-   gcloud secrets create workday-password --data-file=-
-   ```
-3. **Use service accounts** with minimal permissions
-4. **Enable VPC Service Controls** for sensitive data
-5. **Encrypt data** at rest and in transit
+### WorkdayDataflowPipeline.java
+Main pipeline class that orchestrates the data flow:
+- Configures pipeline options
+- Creates page requests based on total count
+- Coordinates parallel processing
+- Writes to BigQuery
+
+### WorkdaySoapHandler.java
+Handles all SOAP API interactions:
+- Builds SOAP requests with authentication
+- Calls Workday Get_Workers API
+- Parses XML responses
+- Extracts employee data
+- Implements retry logic
+
+### WorkdayDataModel.java
+Contains all data model classes:
+- `Employee`: Employee data structure with 13 fields
+- `PageRequest`: Pagination request model
+- `WorkdayConfig`: Configuration with timeouts and retry settings
+
+### BigQuerySchema.java
+Defines BigQuery table schema with all employee fields
+
+## Security
+
+- Never commit credentials to version control
+- Use environment variables for sensitive data
+- Consider using Google Secret Manager for production
+- Enable encryption for data at rest and in transit
 
 ## Cost Optimization
 
-### Estimated Costs (for 50K employees)
-
-- **Dataflow**: $2-5 per run (10 workers × 30 min)
-- **BigQuery Storage**: $0.02/GB/month
-- **BigQuery Queries**: $5/TB scanned
-- **Cloud Storage**: $0.02/GB/month
-
-### Cost Reduction Tips
-
-1. Use **preemptible workers** (70% cost savings):
-   ```bash
-   --usePublicIps=false --enableStreamingEngine
-   ```
-
-2. **Schedule during off-peak hours** for better pricing
-
-3. **Partition BigQuery tables** by ingestion_timestamp:
-   ```sql
-   CREATE TABLE employees
-   PARTITION BY DATE(ingestion_timestamp)
-   ```
-
-## CI/CD Integration
-
-### GitHub Actions Example
-
-```yaml
-name: Deploy Workday Pipeline
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-java@v2
-        with:
-          java-version: '11'
-      - name: Build
-        run: mvn clean package
-      - name: Deploy to Dataflow
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
-        run: ./run-pipeline.sh dataflow
-```
-
-## Development
-
-### Adding Custom Fields
-
-1. Add field to `Employee.java` model
-2. Update `BigQuerySchemaFactory.createEmployeeSchema()`
-3. Update `WorkdaySoapClient.parseWorkerElement()`
-4. Rebuild and test
-
-### Testing
-
-```bash
-# Run unit tests
-mvn test
-
-# Run integration tests (requires credentials)
-mvn verify -P integration-tests
-```
-
-## Support and Contributing
-
-For issues or questions:
-1. Check the [Troubleshooting](#troubleshooting) section
-2. Review Dataflow logs in GCP Console
-3. Contact your Workday administrator for API issues
+- Use preemptible workers (70% cost savings)
+- Right-size worker count and machine types
+- Schedule during off-peak hours
+- Partition BigQuery tables to reduce query costs
 
 ## License
 
 This project is provided as-is for educational and commercial use.
 
-## Changelog
-
-### Version 1.0.0
-- Initial release
-- Parallel page processing
-- BigQuery integration
-- Automatic retry logic
-- Comprehensive error handling
-
 ---
 
-**Built with Apache Beam and Google Cloud Dataflow**
+**Need Help?** Check the troubleshooting section or review Dataflow logs in GCP Console.

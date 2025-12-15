@@ -1,0 +1,17 @@
+QUICK USAGE GUIDE
+=================
+
+STEP 1: Configure - Edit application.properties with your credentials
+
+STEP 2: Build - mvn clean package
+
+STEP 3: Set Environment Variables
+    export WORKDAY_SOAP_URL="https://..."
+    export WORKDAY_USERNAME="user@tenant"
+    export WORKDAY_PASSWORD="password"
+    export EFFECTIVE_DATE="2025-12-15"
+    export BIGQUERY_TABLE="project:dataset.employees"
+
+STEP 4: Run - ./run.sh local (testing) or ./run.sh dataflow (production)
+
+STEP 5: Verify - Query BigQuery to check results

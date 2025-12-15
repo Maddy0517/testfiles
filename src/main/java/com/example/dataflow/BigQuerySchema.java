@@ -1,4 +1,4 @@
-package com.example.dataflow.utils;
+package com.example.dataflow;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableSchema;
@@ -7,93 +7,80 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Factory class to create BigQuery table schemas
+ * BigQuery schema definition for employee table
  */
-public class BigQuerySchemaFactory {
+public class BigQuerySchema {
     
     /**
-     * Create schema for employee data table
+     * Create employee table schema
      */
-    public static TableSchema createEmployeeSchema() {
+    public static TableSchema getEmployeeSchema() {
         List<TableFieldSchema> fields = new ArrayList<>();
         
         fields.add(new TableFieldSchema()
                 .setName("employee_id")
                 .setType("STRING")
-                .setMode("REQUIRED")
-                .setDescription("Unique employee identifier"));
+                .setMode("REQUIRED"));
         
         fields.add(new TableFieldSchema()
                 .setName("first_name")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee first name"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("last_name")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee last name"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("email")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee email address"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("phone")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee phone number"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("hire_date")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee hire date"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("job_title")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee job title"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("department")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee department"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("manager_id")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Manager employee ID"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("location")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employee work location"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("employment_status")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Employment status (Active, Terminated, etc.)"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("effective_date")
                 .setType("STRING")
-                .setMode("NULLABLE")
-                .setDescription("Effective date for the data"));
+                .setMode("NULLABLE"));
         
         fields.add(new TableFieldSchema()
                 .setName("ingestion_timestamp")
                 .setType("TIMESTAMP")
-                .setMode("REQUIRED")
-                .setDescription("Timestamp when data was ingested"));
+                .setMode("REQUIRED"));
         
         return new TableSchema().setFields(fields);
     }

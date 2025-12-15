@@ -1,0 +1,54 @@
+SIMPLIFIED WORKDAY DATAFLOW PROJECT
+====================================
+
+workday-dataflow-pipeline/
+│
+├── pom.xml                           # Maven build configuration
+├── application.properties            # Configuration file
+├── run.sh                            # Simple execution script
+├── README.md                         # Complete documentation
+│
+└── src/main/java/com/example/dataflow/
+    │
+    ├── WorkdayDataflowPipeline.java  # MAIN CLASS - Pipeline orchestration
+    │   └── Contains:
+    │       - Pipeline options definition
+    │       - Main execution logic
+    │       - DoFn classes (GeneratePagesFn, FetchEmployeesFn, ConvertToTableRowFn)
+    │
+    ├── WorkdaySoapHandler.java       # SOAP API HANDLER - API interactions
+    │   └── Contains:
+    │       - SOAP request building
+    │       - XML response parsing
+    │       - Employee data extraction
+    │       - Retry logic
+    │
+    ├── WorkdayDataModel.java         # DATA MODELS - All data structures
+    │   └── Contains:
+    │       - Employee class (13 fields)
+    │       - PageRequest class
+    │       - WorkdayConfig class
+    │
+    └── BigQuerySchema.java           # BIGQUERY SCHEMA - Table definition
+        └── Contains:
+            - Employee table schema (13 fields)
+
+TOTAL: 4 Java files + 1 config file + 1 script + 1 doc
+
+KEY FILES:
+==========
+1. WorkdayDataflowPipeline.java  - Main pipeline class (run this)
+2. WorkdaySoapHandler.java       - All SOAP API logic
+3. WorkdayDataModel.java         - Employee, PageRequest, Config classes
+4. BigQuerySchema.java           - BigQuery table schema
+5. application.properties        - Configuration
+6. run.sh                        - Execution helper script
+
+FEATURES:
+=========
+✓ Parallel page processing (999 records/page)
+✓ Automatic retries with backoff
+✓ BigQuery batch loading
+✓ Configurable parameters
+✓ Scalable to millions of records
+✓ Production-ready error handling
