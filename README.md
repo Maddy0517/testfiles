@@ -35,15 +35,24 @@ workday-dataflow-pipeline/
 
 ### 1. Configure
 
-Edit `application.properties` with your credentials:
+**Note**: `application.properties` is just a reference template. You need to pass parameters via environment variables or command-line arguments.
 
-```properties
-workday.soap.url=https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0
-workday.username=integration_user@tenant
-workday.password=your-password
-workday.tenant.id=your-tenant
-effective.date=2025-12-15
-bigquery.table=your-project:workday_data.employees
+**Windows**: Edit `set-credentials.bat` with your values:
+```batch
+set WORKDAY_SOAP_URL=https://...
+set WORKDAY_USERNAME=user@tenant
+set WORKDAY_PASSWORD=password
+```
+
+**Linux/Mac**: Set environment variables:
+
+```bash
+export WORKDAY_SOAP_URL="https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0"
+export WORKDAY_USERNAME="integration_user@tenant"
+export WORKDAY_PASSWORD="your-password"
+export WORKDAY_TENANT_ID="your-tenant"
+export EFFECTIVE_DATE="2025-12-15"
+export BIGQUERY_TABLE="your-project:workday_data.employees"
 ```
 
 ### 2. Build

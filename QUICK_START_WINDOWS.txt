@@ -31,9 +31,10 @@ OPTION 2: Windows CMD (For Production)
 2. Setup Credentials
    - Edit: set-credentials.bat
    - Update with your Workday API details
+   - DON'T try to pass application.properties as argument!
 
 3. Run Locally (Testing)
-   set-credentials.bat
+   call set-credentials.bat
    run-local.bat
 
 4. Run on Dataflow (Production)
