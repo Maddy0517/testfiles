@@ -1,0 +1,65 @@
+ECLIPSE IDE - QUICK START
+=========================
+
+EASIEST WAY: Java Application Run Configuration
+================================================
+
+1. Right-click: WorkdayDataflowPipeline.java
+2. Run As → Run Configurations...
+3. Java Application → New Configuration
+4. Arguments tab → Program arguments (paste this):
+
+--runner=DirectRunner
+--workdaySoapUrl=https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0
+--workdayUsername=integration_user@tenant
+--workdayPassword=your-password
+--workdayTenantId=your-tenant
+--effectiveDate=2025-12-15
+--bigQueryTable=your-project:workday_data.employees
+--writeDisposition=WRITE_APPEND
+
+5. Apply and Run
+
+DONE! ✅
+
+
+ALTERNATIVE: Maven exec:java
+=============================
+
+If you want to use Maven:
+
+1. Right-click: pom.xml
+2. Run As → Maven build...
+3. Goals: clean compile exec:java
+4. Parameters tab → Add:
+   - exec.mainClass = com.example.dataflow.WorkdayDataflowPipeline
+   - exec.args = --runner=DirectRunner --workdaySoapUrl=https://... --workdayUsername=user@tenant --workdayPassword=pass --effectiveDate=2025-12-15 --bigQueryTable=project:dataset.table
+5. Apply and Run
+
+
+COMMON MISTAKE - DON'T DO THIS:
+================================
+
+❌ mvn exec:java -Dexec.args=file://src/main/resources/config/application.properties
+
+This doesn't work! The app doesn't load properties files.
+
+
+CORRECT FORMAT:
+===============
+
+✅ All arguments start with --
+✅ Each parameter=value pair
+✅ No properties file path
+
+Example:
+--runner=DirectRunner
+--workdaySoapUrl=https://...
+--workdayUsername=user@tenant
+--workdayPassword=password
+
+
+NEED MORE HELP?
+===============
+See: ECLIPSE_SETUP.md (full guide)
+See: ECLIPSE_MAVEN_EXEC.md (Maven exec:java details)

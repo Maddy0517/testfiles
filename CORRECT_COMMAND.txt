@@ -1,0 +1,52 @@
+YOUR CURRENT COMMAND (Wrong):
+==============================
+mvn clean compile exec:java 
+  -Dexec.mainClass=com.example.dataflow.WorkdayDataflowPipeline 
+  -Dexec.args=file://src/main/resources/config/application.properties
+
+Problem: Can't pass properties file!
+
+
+CORRECTED COMMAND:
+==================
+mvn clean compile exec:java ^
+  -Dexec.mainClass=com.example.dataflow.WorkdayDataflowPipeline ^
+  -Dexec.args="--runner=DirectRunner --workdaySoapUrl=https://wd2-impl-services1.workday.com/ccx/service/YOUR-TENANT/Human_Resources/v38.0 --workdayUsername=integration_user@tenant --workdayPassword=your-password --workdayTenantId=your-tenant --effectiveDate=2025-12-15 --bigQueryTable=your-project:workday_data.employees"
+
+Note: All parameters in quotes after -Dexec.args=
+
+
+RECOMMENDED INSTEAD:
+====================
+In Eclipse, use Java Application Run Configuration (easier):
+
+1. Right-click WorkdayDataflowPipeline.java
+2. Run As → Run Configurations
+3. Java Application → New
+4. Arguments tab:
+   --runner=DirectRunner
+   --workdaySoapUrl=https://...
+   --workdayUsername=user@tenant
+   --workdayPassword=password
+   --effectiveDate=2025-12-15
+   --bigQueryTable=project:dataset.table
+5. Run
+
+Much easier!
+
+
+QUICK REFERENCE:
+================
+All Parameters Format: --parameterName=value
+
+Required:
+--workdaySoapUrl=<url>
+--workdayUsername=<user@tenant>
+--workdayPassword=<password>
+--effectiveDate=<YYYY-MM-DD>
+--bigQueryTable=<project:dataset.table>
+
+Optional:
+--workdayTenantId=<tenant>
+--writeDisposition=WRITE_APPEND
+--maxRetries=3

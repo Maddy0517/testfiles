@@ -89,6 +89,10 @@
 
 ## Step 4: Configure Run Configuration
 
+### ⭐ RECOMMENDED: Java Application Run Configuration
+
+This is the easiest and fastest way to run in Eclipse.
+
 ### Create Local Run Configuration (DirectRunner)
 
 1. **Right-click** on `WorkdayDataflowPipeline.java` → **Run As** → **Run Configurations...**
@@ -178,6 +182,38 @@
 
 - Open **BigQuery Console**
 - Query: `SELECT COUNT(*) FROM your-project.workday_data.employees`
+
+## Maven exec:java in Eclipse (Alternative)
+
+If you want to use Maven's exec:java goal:
+
+### Setup Maven Run Configuration
+
+1. **Right-click** on `pom.xml` → **Run As** → **Maven build...**
+
+2. **Goals**: `clean compile exec:java`
+
+3. **Parameter** tab → **Add**:
+   - Name: `exec.mainClass`
+   - Value: `com.example.dataflow.WorkdayDataflowPipeline`
+
+4. **Add** another parameter:
+   - Name: `exec.args`
+   - Value: `--runner=DirectRunner --workdaySoapUrl=https://... --workdayUsername=user@tenant --workdayPassword=password --effectiveDate=2025-12-15 --bigQueryTable=project:dataset.table`
+
+5. **Apply** and **Run**
+
+**Note**: All arguments must be in one line for `exec.args`.
+
+### ❌ Common Mistake
+```
+-Dexec.args=file://src/main/resources/config/application.properties  ❌ Wrong!
+```
+
+### ✅ Correct Format
+```
+-Dexec.args="--runner=DirectRunner --workdaySoapUrl=https://... --workdayUsername=user --workdayPassword=pass --effectiveDate=2025-12-15 --bigQueryTable=project:dataset.table"  ✅ Correct!
+```
 
 ## Common Eclipse Issues
 
