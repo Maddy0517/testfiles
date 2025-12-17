@@ -1,0 +1,28 @@
+QUICK VERIFICATION CHECKLIST
+=============================
+
+1. Check Java Version:
+   java -version
+   # Must show: java version "21" or higher
+
+2. Verify Maven:
+   mvn -version
+   # Should show Maven 3.9+ and Java 21
+
+3. Clean Build:
+   mvn clean package
+   # Should compile successfully with Java 21 features
+
+4. Check for Java 21 Features in Code:
+   # String Templates: STR."text \{variable}"
+   # Pattern Matching: if (node instanceof Element elem)
+   # Switch Expressions: switch(value) { case X when condition -> ... }
+
+5. Verify Configuration:
+   grep "maven.compiler.release" pom.xml
+   # Should show: <maven.compiler.release>21</maven.compiler.release>
+
+READY TO RUN!
+=============
+./run.sh local     # Test locally
+./run.sh dataflow  # Deploy to cloud

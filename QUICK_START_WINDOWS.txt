@@ -1,0 +1,79 @@
+QUICK START - Windows Users
+============================
+
+OPTION 1: Eclipse IDE (Easiest for Development)
+================================================
+
+1. Install Java 21 JDK
+   Download: https://adoptium.net/
+
+2. Install Eclipse IDE
+   Download: https://www.eclipse.org/downloads/
+
+3. Import Project
+   - File → Import → Maven → Existing Maven Projects
+   - Browse to project folder
+   - Finish
+
+4. Configure & Run
+   - See ECLIPSE_SETUP.md for detailed instructions
+   - Right-click WorkdayDataflowPipeline.java → Run As → Java Application
+
+
+OPTION 2: Windows CMD (For Production)
+=======================================
+
+1. Install Prerequisites
+   - Java 21 JDK: https://adoptium.net/
+   - Maven: https://maven.apache.org/download.cgi
+   - Verify: java -version && mvn -version
+
+2. Setup Credentials
+   - Edit: set-credentials.bat
+   - Update with your Workday API details
+   - DON'T try to pass application.properties as argument!
+
+3. Run Locally (Testing)
+   call set-credentials.bat
+   run-local.bat
+
+4. Run on Dataflow (Production)
+   set-credentials.bat
+   run-dataflow.bat
+
+
+BATCH FILES PROVIDED:
+=====================
+✅ set-credentials.bat - Set environment variables
+✅ run-local.bat - Run locally for testing
+✅ run-dataflow.bat - Run on Google Cloud Dataflow
+
+
+DETAILED GUIDES:
+================
+📖 ECLIPSE_SETUP.md - Complete Eclipse IDE setup
+📖 WINDOWS_SETUP.md - Complete Windows CMD guide
+📖 README.md - Full documentation
+
+
+QUICK COMMANDS:
+===============
+
+Build:
+  mvn clean package
+
+Run Locally:
+  run-local.bat
+
+Run on Dataflow:
+  run-dataflow.bat
+
+View Logs:
+  (Logs print to console - keep window open)
+
+
+NEED HELP?
+==========
+1. Check ECLIPSE_SETUP.md (for Eclipse users)
+2. Check WINDOWS_SETUP.md (for CMD users)
+3. Check COMPILATION_FIXES.md (for build errors)
