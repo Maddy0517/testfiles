@@ -28,33 +28,32 @@ if (workerRefNodes.item(0) instanceof Element workerRef) {
 - ✅ More concise and safer
 - ✅ Production-stable since Java 16
 
-### 2. Enhanced Switch Expressions with Pattern Matching (JEP 441) ✅
+### 2. Enhanced instanceof Pattern Matching in Practice ✅
 
-**What**: Switch as an expression with guards and pattern matching
+**What**: Pattern matching eliminates manual casting after type checks
 
-**Used in**:
+**Used throughout the codebase**:
 ```java
-// Java 21 switch with guards
-int totalCount = switch (options.getEstimatedTotalCount()) {
-    case int count when count > 0 -> {
-        LOG.info("Using estimated total count: {}", count);
-        yield count;
+// Clean pattern matching - no manual casts needed
+if (workerRefNodes.item(0) instanceof Element workerRef) {
+    NodeList idNodes = workerRef.getElementsByTagNameNS(WORKDAY_NS, "ID");
+    for (int i = 0; i < idNodes.getLength(); i++) {
+        if (idNodes.item(i) instanceof Element idElement) {
+            String type = idElement.getAttribute("type");
+            if ("Employee_ID".equals(type) || "WID".equals(type)) {
+                employee.employeeId = idElement.getTextContent();
+                break;
+            }
+        }
     }
-    default -> {
-        WorkdaySoapHandler handler = new WorkdaySoapHandler(config);
-        int fetchedCount = handler.getTotalWorkerCount(options.getEffectiveDate());
-        LOG.info("Total employees: {}", fetchedCount);
-        yield fetchedCount;
-    }
-};
+}
 ```
 
 **Benefits**:
-- ✅ Exhaustive checking enforced by compiler
-- ✅ No fall-through issues
-- ✅ Guards with `when` clause
-- ✅ Returns value directly with `yield`
-- ✅ Production-stable in Java 21
+- ✅ 10+ instances in the code
+- ✅ Eliminates ClassCastException risks
+- ✅ More readable and maintainable
+- ✅ Production-stable since Java 16
 
 ### 3. Method References & Functional Programming ✅
 

@@ -56,19 +56,17 @@ if (workerRefNodes.item(0) instanceof Element workerRef) {
 ```
 **10 instances** in the code - all working perfectly!
 
-### ✅ Enhanced Switch Expressions with Guards
+### ✅ Clean Control Flow
 ```java
-int totalCount = switch (options.getEstimatedTotalCount()) {
-    case int count when count > 0 -> {
-        LOG.info("Using estimated count: {}", count);
-        yield count;
-    }
-    default -> {
-        yield handler.getTotalWorkerCount(options.getEffectiveDate());
-    }
-};
+// Simple if-else - clear and maintainable
+int totalCount = options.getEstimatedTotalCount();
+if (totalCount > 0) {
+    LOG.info("Using estimated total count: {}", totalCount);
+} else {
+    totalCount = handler.getTotalWorkerCount(options.getEffectiveDate());
+}
 ```
-**1 instance** - production-ready!
+**Simple and production-ready!**
 
 ### ✅ Method References
 ```java

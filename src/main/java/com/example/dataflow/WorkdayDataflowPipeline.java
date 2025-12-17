@@ -101,20 +101,16 @@ public class WorkdayDataflowPipeline {
         config.tenantId = options.getWorkdayTenantId();
         config.maxRetries = options.getMaxRetries();
         
-        // Get total count (Java 21 enhanced switch with pattern matching)
-        int totalCount = switch (options.getEstimatedTotalCount()) {
-            case int count when count > 0 -> {
-                LOG.info("Using estimated total count: {}", count);
-                yield count;
-            }
-            default -> {
-                LOG.info("Fetching total employee count from Workday...");
-                WorkdaySoapHandler handler = new WorkdaySoapHandler(config);
-                int count = handler.getTotalWorkerCount(options.getEffectiveDate());
-                LOG.info("Total employees: {}", count);
-                yield count;
-            }
-        };
+        // Get total count
+        int totalCount = options.getEstimatedTotalCount();
+        if (totalCount > 0) {
+            LOG.info("Using estimated total count: {}", totalCount);
+        } else {
+            LOG.info("Fetching total employee count from Workday...");
+            WorkdaySoapHandler handler = new WorkdaySoapHandler(config);
+            totalCount = handler.getTotalWorkerCount(options.getEffectiveDate());
+            LOG.info("Total employees: {}", totalCount);
+        }
         
         // Create pipeline
         Pipeline pipeline = Pipeline.create(options);
