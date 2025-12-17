@@ -164,11 +164,23 @@ This pipeline requires:
 
 ```xml
 <properties>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
     <maven.compiler.release>21</maven.compiler.release>
 </properties>
+
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.12.1</version>
+    <configuration>
+        <release>21</release>
+        <compilerArgs>
+            <arg>--enable-preview</arg>
+        </compilerArgs>
+    </configuration>
+</plugin>
 ```
+
+**Note**: Using `maven.compiler.release` is the modern approach (Maven 3.6+). It's cleaner and ensures proper cross-compilation support.
 
 ## Running with Java 21
 
