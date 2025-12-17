@@ -34,17 +34,17 @@ public class WorkdaySoapHandler {
         
         for (int attempt = 1; attempt <= config.maxRetries; attempt++) {
             try {
-                LOG.info(STR."Fetching page \{pageNumber} for date \{effectiveDate} (attempt \{attempt})");
+                LOG.info("Fetching page {} for date {} (attempt {})", pageNumber, effectiveDate, attempt);
                 
                 SOAPMessage response = callWorkdayAPI(effectiveDate, pageNumber);
                 List<Employee> employees = parseEmployeeResponse(response, effectiveDate);
                 
-                LOG.info(STR."Successfully fetched \{employees.size()} employees from page \{pageNumber}");
+                LOG.info("Successfully fetched {} employees from page {}", employees.size(), pageNumber);
                 return employees;
                 
             } catch (Exception e) {
                 lastException = e;
-                LOG.warn(STR."Error fetching page \{pageNumber} (attempt \{attempt}): \{e.getMessage()}");
+                LOG.warn("Error fetching page {} (attempt {}): {}", pageNumber, attempt, e.getMessage());
                 
                 if (attempt < config.maxRetries) {
                     try {
@@ -58,7 +58,7 @@ public class WorkdaySoapHandler {
         }
         
         throw new RuntimeException(
-            STR."Failed to fetch page \{pageNumber} after \{config.maxRetries} attempts", 
+            String.format("Failed to fetch page %d after %d attempts", pageNumber, config.maxRetries), 
             lastException
         );
     }
@@ -83,7 +83,7 @@ public class WorkdaySoapHandler {
             return 10000;
             
         } catch (Exception e) {
-            LOG.error(STR."Error getting total count: \{e.getMessage()}");
+            LOG.error("Error getting total count: {}", e.getMessage());
             return 10000;
         }
     }
@@ -170,12 +170,12 @@ public class WorkdaySoapHandler {
                         employees.add(employee);
                     }
                 } catch (Exception e) {
-                    LOG.error(STR."Error parsing worker element \{i}: \{e.getMessage()}");
+                    LOG.error("Error parsing worker element {}: {}", i, e.getMessage());
                 }
             }
             
         } catch (Exception e) {
-            LOG.error(STR."Error parsing SOAP response: \{e.getMessage()}", e);
+            LOG.error("Error parsing SOAP response: {}", e.getMessage(), e);
             throw e;
         }
         
@@ -204,7 +204,7 @@ public class WorkdaySoapHandler {
                 }
             }
             
-            // Extract Worker Data (Java 21 pattern matching)
+            // Extract Worker Data
             NodeList workerDataNodes = workerElement.getElementsByTagNameNS(WORKDAY_NS, "Worker_Data");
             if (workerDataNodes.getLength() > 0 && workerDataNodes.item(0) instanceof Element workerData) {
                 
@@ -258,14 +258,14 @@ public class WorkdaySoapHandler {
             employee.ingestionTimestamp = Instant.now().toString();
             
         } catch (Exception e) {
-            LOG.error(STR."Error parsing worker element: \{e.getMessage()}");
+            LOG.error("Error parsing worker element: {}", e.getMessage());
         }
         
         return employee;
     }
     
     /**
-     * Helper to safely extract element text (Java 21 enhanced)
+     * Helper to safely extract element text
      */
     private String getElementText(Element parent, String tagName) {
         try {
@@ -274,7 +274,7 @@ public class WorkdaySoapHandler {
                 return nodes.item(0).getTextContent();
             }
         } catch (Exception e) {
-            LOG.debug(STR."Could not find element: \{tagName}");
+            LOG.debug("Could not find element: {}", tagName);
         }
         return null;
     }

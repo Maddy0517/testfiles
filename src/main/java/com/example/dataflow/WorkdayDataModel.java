@@ -62,7 +62,7 @@ public class WorkdayDataModel {
         
         @Override
         public String toString() {
-            return STR."Employee{id='\{employeeId}', name='\{firstName} \{lastName}'}";
+            return String.format("Employee{id='%s', name='%s %s'}", employeeId, firstName, lastName);
         }
     }
     
@@ -89,7 +89,7 @@ public class WorkdayDataModel {
         
         @Override
         public String toString() {
-            return STR."PageRequest{page=\{pageNumber}, date='\{effectiveDate}'}";
+            return String.format("PageRequest{page=%d, date='%s'}", pageNumber, effectiveDate);
         }
     }
     
