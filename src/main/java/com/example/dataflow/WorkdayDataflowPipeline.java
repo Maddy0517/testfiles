@@ -17,6 +17,7 @@ import java.util.List;
 /**
  * Main Dataflow pipeline for Workday employee data ingestion
  * Features: Parallel page processing, automatic retries, BigQuery integration
+ * Built with Java 21+ features for modern, clean code
  */
 public class WorkdayDataflowPipeline {
     
@@ -85,11 +86,11 @@ public class WorkdayDataflowPipeline {
     }
     
     /**
-     * Build and run pipeline
+     * Build and run pipeline (Java 21 string templates)
      */
     public static void runPipeline(WorkdayPipelineOptions options) {
         LOG.info("Starting Workday Employee Dataflow Pipeline");
-        LOG.info("Effective Date: {}, BigQuery: {}", options.getEffectiveDate(), options.getBigQueryTable());
+        LOG.info(STR."Effective Date: \{options.getEffectiveDate()}, BigQuery: \{options.getBigQueryTable()}");
         
         // Create Workday configuration
         WorkdayConfig config = new WorkdayConfig(
@@ -100,14 +101,20 @@ public class WorkdayDataflowPipeline {
         config.tenantId = options.getWorkdayTenantId();
         config.maxRetries = options.getMaxRetries();
         
-        // Get total count
-        int totalCount = options.getEstimatedTotalCount();
-        if (totalCount <= 0) {
-            LOG.info("Fetching total employee count from Workday...");
-            WorkdaySoapHandler handler = new WorkdaySoapHandler(config);
-            totalCount = handler.getTotalWorkerCount(options.getEffectiveDate());
-            LOG.info("Total employees: {}", totalCount);
-        }
+        // Get total count (Java 21 enhanced switch)
+        int totalCount = switch (options.getEstimatedTotalCount()) {
+            case int count when count > 0 -> {
+                LOG.info(STR."Using estimated total count: \{count}");
+                yield count;
+            }
+            default -> {
+                LOG.info("Fetching total employee count from Workday...");
+                WorkdaySoapHandler handler = new WorkdaySoapHandler(config);
+                int count = handler.getTotalWorkerCount(options.getEffectiveDate());
+                LOG.info(STR."Total employees: \{count}");
+                yield count;
+            }
+        };
         
         // Create pipeline
         Pipeline pipeline = Pipeline.create(options);
@@ -143,7 +150,7 @@ public class WorkdayDataflowPipeline {
     }
     
     /**
-     * Generate page requests for parallel processing
+     * Generate page requests for parallel processing (Java 21 enhanced)
      */
     static class GeneratePagesFn extends DoFn<Integer, PageRequest> {
         private final String effectiveDate;
@@ -155,7 +162,7 @@ public class WorkdayDataflowPipeline {
         @ProcessElement
         public void processElement(@Element Integer totalCount, OutputReceiver<PageRequest> out) {
             int totalPages = (int) Math.ceil((double) totalCount / 999);
-            LOG.info("Generating {} page requests for {} records", totalPages, totalCount);
+            LOG.info(STR."Generating \{totalPages} page requests for \{totalCount} records");
             
             for (int page = 1; page <= totalPages; page++) {
                 out.output(new PageRequest(page, effectiveDate));
@@ -164,7 +171,7 @@ public class WorkdayDataflowPipeline {
     }
     
     /**
-     * Fetch employees from Workday (runs in parallel)
+     * Fetch employees from Workday (runs in parallel) - Java 21 enhanced
      */
     static class FetchEmployeesFn extends DoFn<PageRequest, Employee> {
         private final WorkdayConfig config;
@@ -183,12 +190,10 @@ public class WorkdayDataflowPipeline {
         public void processElement(@Element PageRequest request, OutputReceiver<Employee> out) {
             try {
                 List<Employee> employees = handler.fetchEmployeePage(request.effectiveDate, request.pageNumber);
-                for (Employee emp : employees) {
-                    out.output(emp);
-                }
+                employees.forEach(out::output);
             } catch (Exception e) {
-                LOG.error("Error processing page {}: {}", request.pageNumber, e.getMessage(), e);
-                throw new RuntimeException("Failed to process page " + request.pageNumber, e);
+                LOG.error(STR."Error processing page \{request.pageNumber}: \{e.getMessage()}", e);
+                throw new RuntimeException(STR."Failed to process page \{request.pageNumber}", e);
             }
         }
     }

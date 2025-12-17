@@ -1,6 +1,6 @@
 # Workday Employee Data Ingestion - Google Cloud Dataflow
 
-High-performance Apache Beam pipeline for ingesting Workday employee data via SOAP API into BigQuery with parallel page processing.
+High-performance Apache Beam pipeline for ingesting Workday employee data via SOAP API into BigQuery with parallel page processing. Built with Java 21+ modern language features.
 
 ## Project Structure
 
@@ -26,8 +26,8 @@ workday-dataflow-pipeline/
 
 ## Prerequisites
 
-- Java 11+
-- Maven 3.6+
+- **Java 21 or higher** (required for modern language features)
+- Maven 3.9+
 - Google Cloud account with Dataflow and BigQuery APIs enabled
 - Workday SOAP API credentials
 

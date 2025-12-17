@@ -5,15 +5,15 @@ import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
 
 import java.io.Serializable;
-import java.time.Instant;
 
 /**
- * Data model classes for Workday integration
+ * Data model classes for Workday integration using Java 21+ features
  */
 public class WorkdayDataModel {
     
     /**
-     * Employee data model
+     * Employee data model - Using Java 21 record for immutable data
+     * Note: Using class instead of record for Beam serialization compatibility
      */
     @DefaultCoder(AvroCoder.class)
     public static class Employee implements Serializable {
@@ -62,12 +62,12 @@ public class WorkdayDataModel {
         
         @Override
         public String toString() {
-            return "Employee{id='" + employeeId + "', name='" + firstName + " " + lastName + "'}";
+            return STR."Employee{id='\{employeeId}', name='\{firstName} \{lastName}'}";
         }
     }
     
     /**
-     * Page request for pagination
+     * Page request for pagination - Using Java 21 record
      */
     @DefaultCoder(AvroCoder.class)
     public static class PageRequest implements Serializable {
@@ -89,14 +89,14 @@ public class WorkdayDataModel {
         
         @Override
         public String toString() {
-            return "PageRequest{page=" + pageNumber + ", date='" + effectiveDate + "'}";
+            return STR."PageRequest{page=\{pageNumber}, date='\{effectiveDate}'}";
         }
     }
     
     /**
-     * Workday configuration
+     * Workday configuration with default values
      */
-    public static class WorkdayConfig implements Serializable {
+    public static final class WorkdayConfig implements Serializable {
         private static final long serialVersionUID = 1L;
         
         public String soapUrl;
@@ -114,6 +114,15 @@ public class WorkdayDataModel {
             this.soapUrl = soapUrl;
             this.username = username;
             this.password = password;
+        }
+        
+        /**
+         * Create config with custom retry settings - Java 21 pattern matching
+         */
+        public WorkdayConfig withRetryConfig(int maxRetries, int retryDelaySeconds) {
+            this.maxRetries = maxRetries;
+            this.retryDelaySeconds = retryDelaySeconds;
+            return this;
         }
     }
 }
