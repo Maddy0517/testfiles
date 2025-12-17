@@ -139,13 +139,16 @@ The pipeline creates a table with these fields:
 
 ## Performance Guidelines
 
-### Dataset Sizing
+### Dataset Sizing (Cost-Optimized Defaults)
 
 | Employees | Workers | Machine Type  | Est. Time | Est. Cost |
 |-----------|---------|---------------|-----------|-----------|
-| 5,000     | 2       | n1-standard-2 | 5 min     | $0.50     |
-| 50,000    | 10      | n1-standard-4 | 30 min    | $5        |
-| 500,000   | 30      | n1-standard-8 | 45 min    | $30       |
+| 5,000     | 1-2     | n1-standard-2 | 5 min     | $0.20     |
+| 25,000    | 2       | n1-standard-2 | 12 min    | $0.50     |
+| 100,000   | 5       | n1-standard-4 | 20 min    | $5        |
+| 500,000   | 10      | n1-standard-8 | 40 min    | $20       |
+
+**💡 Tip**: Start with 2 workers (default) and scale up only if needed. Most companies don't need more than 5 workers.
 
 ### Optimization Tips
 

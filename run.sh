@@ -30,9 +30,9 @@ elif [ "$1" == "dataflow" ]; then
         --region="${GCP_REGION:-us-central1}" \
         --tempLocation="${TEMP_LOCATION}" \
         --stagingLocation="${STAGING_LOCATION}" \
-        --numWorkers="${NUM_WORKERS:-10}" \
-        --maxNumWorkers="${MAX_NUM_WORKERS:-50}" \
-        --workerMachineType="${WORKER_MACHINE_TYPE:-n1-standard-4}" \
+        --numWorkers="${NUM_WORKERS:-2}" \
+        --maxNumWorkers="${MAX_NUM_WORKERS:-5}" \
+        --workerMachineType="${WORKER_MACHINE_TYPE:-n1-standard-2}" \
         --jobName="workday-employee-$(date +%Y%m%d-%H%M%S)" \
         --workdaySoapUrl="${WORKDAY_SOAP_URL}" \
         --workdayUsername="${WORKDAY_USERNAME}" \
