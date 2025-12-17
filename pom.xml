@@ -46,6 +46,13 @@
             <version>${beam.version}</version>
         </dependency>
 
+        <!-- Apache Beam Extensions for Avro Coder -->
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-extensions-avro</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
+
         <!-- SOAP/JAX-WS Dependencies -->
         <dependency>
             <groupId>javax.xml.ws</groupId>

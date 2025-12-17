@@ -1,8 +1,8 @@
 package com.example.dataflow;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.beam.sdk.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 
 import java.io.Serializable;
 
